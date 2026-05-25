@@ -1011,6 +1011,7 @@
   .connect-btn:active { transform: scale(0.98); }
   .connect-btn.apple-btn { background: #1A1A1A; color: white; }
   .connect-btn.garmin-btn { background: #006EB6; color: white; }
+  .connected-badge { background: #E8F5E9; color: #2D5016; font-weight: 700; padding: 3px 8px; border-radius: 20px; font-size: 11px; }
 
   .connect-cancel {
     display: block;
@@ -2009,6 +2010,7 @@
             <div class="wearable-label" data-i18n="wb_stress">Stress</div>
           </div>
         </div>
+        <button onclick="openConnect('garmin')" style="width:100%;margin-top:12px;padding:10px;background:transparent;border:1.5px solid rgba(255,255,255,0.3);color:white;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;touch-action:manipulation">⌚ Update today's stats</button>
         <div class="wearable-source">⌚ Garmin · synced 8min ago</div>
       <div id="level-badge" style="margin-top:8px;font-size:11px;color:rgba(255,255,255,0.6);text-align:right"></div>
       </div>
@@ -2918,13 +2920,14 @@
     setCard('guidance-recover-icon', 'guidance-recover-title', 'guidance-recover-body', recover);
   }
 
-  // ── WEARABLE MOCK DATA LAYER ──
-  // In production this connects to HealthKit / Garmin Connect API
-  // For now seeds realistic data so the engine works
+  // ── WEARABLE DATA LAYER ──
+  // Data comes from manual entry or file import (Garmin CSV / Apple Health XML)
+  // No fake defaults — only real data the user provides
   function seedWearableIfEmpty() {
+    // Do not seed fake data — let the user provide real stats
+    // Just ensure the key exists as an empty object
     if (!localStorage.getItem('fauna_wearable')) {
-      var defaults = { hrv: 58, sleep: 7.2, bodyBattery: 65, stress: 28, lastSync: Date.now() };
-      localStorage.setItem('fauna_wearable', JSON.stringify(defaults));
+      localStorage.setItem('fauna_wearable', JSON.stringify({}));
     }
   }
   seedWearableIfEmpty();
@@ -3084,9 +3087,6 @@
     window.scrollTo(0, 0);
   }
 
-  const bodyBattery = 62;
-  const hrv = 71;
-  const sleepHrs = 7.3;
   // currentTier managed by onboarding block
 
   const phaseIntel = {
@@ -3461,75 +3461,225 @@
     setTimeout(() => t.classList.remove('show'), 2500);
   }
 
-  const connections = { apple: false, garmin: false };
-
-  const deviceData = {
-    apple: {
-      name: 'Apple Health',
-      icon: '⌚',
-      iconClass: 'apple',
-      btnClass: 'apple-btn',
-      btnText: 'Connect with Apple Health',
-      desc: 'Sync from your iPhone & Apple Watch',
-      perms: [
-        { icon: '❤️', title: 'Heart Rate & HRV', desc: 'Real-time recovery and stress signals' },
-        { icon: '😴', title: 'Sleep Analysis', desc: 'Duration, stages, and quality score' },
-        { icon: '🏃', title: 'Workouts', desc: 'Activity type, duration, and intensity' },
-        { icon: '🩸', title: 'Cycle Data', desc: 'Sync existing cycle logs if available' },
-      ]
-    },
-    garmin: {
-      name: 'Garmin Connect',
-      icon: '🟢',
-      iconClass: 'garmin',
-      btnClass: 'garmin-btn',
-      btnText: 'Connect with Garmin',
-      desc: 'Sync from your Garmin device',
-      perms: [
-        { icon: '🔋', title: 'Body Battery', desc: 'Your energy reserves throughout the day' },
-        { icon: '😤', title: 'Stress Score', desc: 'HRV-based stress tracking' },
-        { icon: '❤️', title: 'Heart Rate & HRV', desc: 'Real-time and overnight data' },
-        { icon: '🏋️', title: 'Training Load', desc: 'Acute and chronic training stress' },
-      ]
-    }
-  };
-
-  let currentDevice = null;
+  // ── WEARABLE / HEALTH DATA ──
+  var currentDevice = null;
 
   function openConnect(device) {
     currentDevice = device;
-    const d = deviceData[device];
-    const isConnected = connections[device];
+    var isGarmin = device === 'garmin';
+    var w = JSON.parse(localStorage.getItem('fauna_wearable') || '{}');
+    var hasData = w.hrv || w.sleep || w.bodyBattery;
+    var lastSync = w.lastSync ? new Date(w.lastSync).toLocaleDateString() : null;
+    var deviceName = isGarmin ? 'Garmin Connect' : 'Apple Health';
+    var deviceIcon = isGarmin ? '\ud83d\udd3a' : '\u231a';
+    var deviceClass = isGarmin ? 'garmin' : 'apple';
+    var batteryLabel = isGarmin ? 'Body Battery' : 'Activity Ring %';
+    var batteryHint  = isGarmin ? 'From Garmin Connect home' : 'From Watch Activity rings';
+    var importInstructions = isGarmin
+      ? '<ol style="font-size:12px;color:var(--text-mid);padding-left:18px;line-height:1.8"><li>Open <b>Garmin Connect</b> app or connect.garmin.com</li><li>Go to <b>More \u2192 Export Data</b></li><li>Select <b>Health Snapshot</b></li><li>Download the <b>.csv</b> file</li><li>Upload it below</li></ol>'
+      : '<ol style="font-size:12px;color:var(--text-mid);padding-left:18px;line-height:1.8"><li>Open the <b>Health</b> app on iPhone</li><li>Tap your profile photo (top right)</li><li>Scroll down \u2192 <b>Export All Health Data</b></li><li>Open the .zip \u2192 find <b>export.xml</b></li><li>Upload that file below</li></ol>';
+    var importBtn = isGarmin
+      ? '<label style="display:block;width:100%;padding:14px;background:var(--green-deep);color:white;border-radius:14px;font-size:15px;font-weight:700;cursor:pointer;text-align:center;box-sizing:border-box">\ud83d\udcc2 Upload Garmin CSV<input type="file" accept=".csv,.zip" style="display:none" onchange="parseGarminFile(this)"></label>'
+      : '<label style="display:block;width:100%;padding:14px;background:#1C1C1E;color:white;border-radius:14px;font-size:15px;font-weight:700;cursor:pointer;text-align:center;box-sizing:border-box">\u231a Upload Apple Health export.xml<input type="file" accept=".xml,.zip" style="display:none" onchange="parseAppleHealthFile(this)"></label>';
 
-    document.getElementById('connect-modal-inner').innerHTML = `
-      <div class="connect-header">
-        <div class="connect-device-icon ${d.iconClass}">${d.icon}</div>
-        <div class="connect-header-text">
-          <h2>${d.name}</h2>
-          <p>${d.desc}</p>
-        </div>
-      </div>
-      <div class="connect-perms">
-        <div class="connect-perms-title">Fauna will read</div>
-        ${d.perms.map(p => `
-          <div class="perm-item">
-            <div class="perm-icon">${p.icon}</div>
-            <div class="perm-text">
-              <h4>${p.title}</h4>
-              <p>${p.desc}</p>
-            </div>
-          </div>
-        `).join('')}
-      </div>
-      ${isConnected
-        ? `<button class="connect-btn ${d.btnClass}" onclick="disconnectDevice('${device}')" style="background:#C0392B">Disconnect</button>`
-        : `<button class="connect-btn ${d.btnClass}" onclick="connectDevice('${device}')">${d.btnText}</button>`
-      }
-      <button class="connect-cancel" onclick="closeConnect()">Cancel</button>
-    `;
+    document.getElementById('connect-modal-inner').innerHTML =
+      '<div style="padding:0 0 8px">' +
+        '<div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">' +
+          '<div class="connect-device-icon ' + deviceClass + '" style="width:44px;height:44px;font-size:20px;display:flex;align-items:center;justify-content:center;border-radius:12px">' + deviceIcon + '</div>' +
+          '<div><h2 style="font-family:\'DM Serif Display\',Georgia,serif;font-size:20px;margin:0">' + deviceName + '</h2>' +
+          '<p style="font-size:13px;color:var(--text-light);margin:2px 0 0">' + (hasData ? ('Last synced: ' + (lastSync || 'today')) : 'No data yet') + '</p></div>' +
+        '</div>' +
+        '<div style="display:flex;background:var(--cream-dark);border-radius:10px;padding:3px;margin-bottom:16px">' +
+          '<button id="wtab-manual" onclick="switchWTab(\'manual\')" style="flex:1;padding:8px;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;background:var(--green-deep);color:white;transition:all 0.2s">\u270f\ufe0f Enter stats</button>' +
+          '<button id="wtab-import" onclick="switchWTab(\'import\')" style="flex:1;padding:8px;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;background:transparent;color:var(--text-mid);transition:all 0.2s">\ud83d\udcc2 Import file</button>' +
+        '</div>' +
+        '<div id="wpanel-manual">' +
+          '<p style="font-size:12px;color:var(--text-light);margin-bottom:12px">Enter today\'s stats directly from your ' + (isGarmin ? 'Garmin Connect app' : 'Apple Watch or Health app') + '.</p>' +
+          '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">' +
+            '<div style="background:var(--cream);border-radius:12px;padding:12px"><div style="font-size:10px;font-weight:700;text-transform:uppercase;color:var(--text-light);letter-spacing:0.5px;margin-bottom:6px">' + batteryLabel + '</div><input id="w-input-battery" type="number" min="0" max="100" placeholder="0-100" value="' + (w.bodyBattery || '') + '" style="width:100%;border:none;background:transparent;font-size:22px;font-weight:800;color:var(--green-deep);font-family:inherit;outline:none"><div style="font-size:10px;color:var(--text-light);margin-top:2px">' + batteryHint + '</div></div>' +
+            '<div style="background:var(--cream);border-radius:12px;padding:12px"><div style="font-size:10px;font-weight:700;text-transform:uppercase;color:var(--text-light);letter-spacing:0.5px;margin-bottom:6px">HRV (ms)</div><input id="w-input-hrv" type="number" min="0" max="200" placeholder="20-100" value="' + (w.hrv || '') + '" style="width:100%;border:none;background:transparent;font-size:22px;font-weight:800;color:var(--amber);font-family:inherit;outline:none"><div style="font-size:10px;color:var(--text-light);margin-top:2px">' + (isGarmin ? 'Garmin \u2192 Health Stats \u2192 HRV' : 'Health app \u2192 Heart \u2192 HRV') + '</div></div>' +
+            '<div style="background:var(--cream);border-radius:12px;padding:12px"><div style="font-size:10px;font-weight:700;text-transform:uppercase;color:var(--text-light);letter-spacing:0.5px;margin-bottom:6px">Sleep (hours)</div><input id="w-input-sleep" type="number" min="0" max="14" step="0.5" placeholder="6-9" value="' + (w.sleep || '') + '" style="width:100%;border:none;background:transparent;font-size:22px;font-weight:800;color:#5A8A8A;font-family:inherit;outline:none"><div style="font-size:10px;color:var(--text-light);margin-top:2px">' + (isGarmin ? 'Garmin Connect \u2192 Sleep' : 'Health \u2192 Sleep') + '</div></div>' +
+            '<div style="background:var(--cream);border-radius:12px;padding:12px"><div style="font-size:10px;font-weight:700;text-transform:uppercase;color:var(--text-light);letter-spacing:0.5px;margin-bottom:6px">Stress (0-100)</div><input id="w-input-stress" type="number" min="0" max="100" placeholder="0-100" value="' + (w.stress || '') + '" style="width:100%;border:none;background:transparent;font-size:22px;font-weight:800;color:#C0392B;font-family:inherit;outline:none"><div style="font-size:10px;color:var(--text-light);margin-top:2px">' + (isGarmin ? 'Garmin Connect \u2192 Stress' : 'Watch \u2192 Mindfulness') + '</div></div>' +
+          '</div>' +
+          '<button onclick="saveManualWearable()" style="width:100%;padding:14px;background:var(--green-deep);color:white;border:none;border-radius:14px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit">Save stats</button>' +
+        '</div>' +
+        '<div id="wpanel-import" style="display:none">' +
+          '<div style="background:var(--cream);border-radius:14px;padding:16px;margin-bottom:14px"><div style="font-size:13px;font-weight:700;color:var(--text-dark);margin-bottom:8px">How to export from ' + deviceName + '</div>' + importInstructions + '</div>' +
+          importBtn +
+          '<div id="import-status" style="margin-top:12px;font-size:13px;color:var(--text-mid);text-align:center"></div>' +
+        '</div>' +
+      '</div>';
 
     document.getElementById('connect-overlay').classList.add('open');
     document.getElementById('connect-modal').classList.add('open');
+  }
+
+  function switchWTab(tab) {
+    document.getElementById('wpanel-manual').style.display = tab === 'manual' ? 'block' : 'none';
+    document.getElementById('wpanel-import').style.display = tab === 'import' ? 'block' : 'none';
+    document.getElementById('wtab-manual').style.background = tab === 'manual' ? 'var(--green-deep)' : 'transparent';
+    document.getElementById('wtab-manual').style.color = tab === 'manual' ? 'white' : 'var(--text-mid)';
+    document.getElementById('wtab-import').style.background = tab === 'import' ? 'var(--green-deep)' : 'transparent';
+    document.getElementById('wtab-import').style.color = tab === 'import' ? 'white' : 'var(--text-mid)';
+  }
+
+  function saveManualWearable() {
+    var battery = parseFloat(document.getElementById('w-input-battery').value) || null;
+    var hrv     = parseFloat(document.getElementById('w-input-hrv').value)     || null;
+    var sleep   = parseFloat(document.getElementById('w-input-sleep').value)   || null;
+    var stress  = parseFloat(document.getElementById('w-input-stress').value)  || null;
+    var w = JSON.parse(localStorage.getItem('fauna_wearable') || '{}');
+    if (battery !== null) w.bodyBattery = battery;
+    if (hrv     !== null) w.hrv         = hrv;
+    if (sleep   !== null) w.sleep       = sleep;
+    if (stress  !== null) w.stress      = stress;
+    w.lastSync = Date.now();
+    w.source = currentDevice || 'garmin';
+    localStorage.setItem('fauna_wearable', JSON.stringify(w));
+    var setEl = function(id, val) { var el = document.getElementById(id); if (el) el.textContent = val; };
+    if (w.hrv)         setEl('wb-hrv', w.hrv);
+    if (w.bodyBattery) setEl('wb-battery', w.bodyBattery);
+    if (w.sleep)       setEl('wb-sleep', w.sleep + 'h');
+    if (w.stress)      setEl('wb-stress', w.stress);
+    if (typeof renderHomeScreen === 'function') renderHomeScreen();
+    closeConnect();
+    var t = document.getElementById('toast');
+    t.textContent = '\u2713 Stats saved \u2014 energy score updated';
+    t.classList.add('show');
+    setTimeout(function() { t.classList.remove('show'); }, 2500);
+    var statusEl = document.getElementById((w.source || 'garmin') + '-status');
+    if (statusEl) statusEl.innerHTML = '<span class="connected-badge">\u2713 Synced</span>';
+  }
+
+  function parseGarminFile(input) {
+    var file = input.files[0];
+    if (!file) return;
+    var statusEl = document.getElementById('import-status');
+    statusEl.textContent = 'Reading file...';
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      try {
+        var text = e.target.result;
+        var extracted = {};
+        var lines2 = text.split('\n').filter(function(l){ return l.trim(); });
+        var header = lines2[0] ? lines2[0].toLowerCase().split(',') : [];
+        var colMap = {};
+        header.forEach(function(h, i) {
+          var clean = h.replace(/"/g,'').trim();
+          if (clean.includes('hrv')) colMap.hrv = i;
+          if (clean.includes('body battery')) colMap.bodyBattery = i;
+          if (clean.includes('sleep duration') || clean.includes('total sleep')) colMap.sleep = i;
+          if (clean.includes('stress') && !clean.includes('load')) colMap.stress = i;
+        });
+        var lastRow = null;
+        for (var i2 = lines2.length - 1; i2 >= 1; i2--) {
+          if (lines2[i2].trim()) { lastRow = lines2[i2].split(','); break; }
+        }
+        if (lastRow) {
+          var getVal = function(key) {
+            if (colMap[key] !== undefined) {
+              var v = parseFloat(lastRow[colMap[key]].replace(/"/g,''));
+              return isNaN(v) ? null : v;
+            }
+            return null;
+          };
+          if (getVal('hrv') !== null)         extracted.hrv         = getVal('hrv');
+          if (getVal('bodyBattery') !== null) extracted.bodyBattery = getVal('bodyBattery');
+          if (getVal('sleep') !== null)       extracted.sleep       = Math.round(getVal('sleep') / 60 * 10) / 10;
+          if (getVal('stress') !== null)      extracted.stress      = getVal('stress');
+        }
+        if (!Object.keys(extracted).length) {
+          lines2.forEach(function(line) {
+            var lower = line.toLowerCase();
+            var val = parseFloat(line.split(',').pop());
+            if (isNaN(val)) return;
+            if (lower.includes('hrv'))          extracted.hrv         = val;
+            if (lower.includes('body battery')) extracted.bodyBattery = val;
+            if (lower.includes('sleep'))        extracted.sleep       = val > 20 ? Math.round(val/60*10)/10 : val;
+            if (lower.includes('stress'))       extracted.stress      = val;
+          });
+        }
+        if (!Object.keys(extracted).length) {
+          statusEl.textContent = 'Could not read stats. Try the Enter stats tab instead.';
+          return;
+        }
+        var w2 = JSON.parse(localStorage.getItem('fauna_wearable') || '{}');
+        Object.assign(w2, extracted); w2.lastSync = Date.now(); w2.source = 'garmin';
+        localStorage.setItem('fauna_wearable', JSON.stringify(w2));
+        var parts = [];
+        if (extracted.hrv)         parts.push('HRV: ' + extracted.hrv + 'ms');
+        if (extracted.bodyBattery) parts.push('Battery: ' + extracted.bodyBattery);
+        if (extracted.sleep)       parts.push('Sleep: ' + extracted.sleep + 'h');
+        if (extracted.stress)      parts.push('Stress: ' + extracted.stress);
+        statusEl.innerHTML = '<span style="color:var(--green-deep);font-weight:700">\u2713 Imported: ' + parts.join(' \u00b7 ') + '</span>';
+        var setEl3 = function(id,val){ var el=document.getElementById(id); if(el) el.textContent=val; };
+        if (w2.hrv)         setEl3('wb-hrv', w2.hrv);
+        if (w2.bodyBattery) setEl3('wb-battery', w2.bodyBattery);
+        if (w2.sleep)       setEl3('wb-sleep', w2.sleep + 'h');
+        if (w2.stress)      setEl3('wb-stress', w2.stress);
+        if (typeof renderHomeScreen === 'function') renderHomeScreen();
+        var gd = document.getElementById('garmin-status');
+        if (gd) gd.innerHTML = '<span class="connected-badge">\u2713 Synced</span>';
+      } catch(err) { statusEl.textContent = 'Error reading file. Try manual entry instead.'; }
+    };
+    reader.readAsText(file.size > 5000000 ? file.slice(0,5000000) : file);
+  }
+
+  function parseAppleHealthFile(input) {
+    var file = input.files[0];
+    if (!file) return;
+    var statusEl = document.getElementById('import-status');
+    statusEl.textContent = 'Reading file... large exports may take a moment.';
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      try {
+        var text = e.target.result;
+        if (!text.includes('<HealthData') && !text.includes('<Record')) {
+          statusEl.textContent = 'Looks like a .zip file. Open it, find export.xml inside, and upload that file.';
+          return;
+        }
+        var extracted = {};
+        var getRecords = function(typeStr) { return text.match(new RegExp('type="' + typeStr + '"[^/]*\/>', 'g')) || []; };
+        var getAttr = function(record, attr) { var m = record.match(new RegExp(attr + '="([^"]+)"')); return m ? m[1] : null; };
+        var hrvRecs = getRecords('HKQuantityTypeIdentifierHeartRateVariabilitySDNN');
+        if (hrvRecs.length) {
+          var recent = hrvRecs.slice(-7), sum=0, cnt=0;
+          recent.forEach(function(r){ var v=parseFloat(getAttr(r,'value')); if(!isNaN(v)){sum+=v;cnt++;} });
+          if (cnt) extracted.hrv = Math.round(sum/cnt);
+        }
+        var sleepRecs = getRecords('HKCategoryTypeIdentifierSleepAnalysis');
+        if (sleepRecs.length) {
+          var sl = sleepRecs[sleepRecs.length-1];
+          var s = getAttr(sl,'startDate'), en = getAttr(sl,'endDate');
+          if (s && en) { var hrs = (new Date(en)-new Date(s))/3600000; if (hrs>2&&hrs<14) extracted.sleep=Math.round(hrs*10)/10; }
+        }
+        var rhrRecs = getRecords('HKQuantityTypeIdentifierRestingHeartRate');
+        if (rhrRecs.length) {
+          var rhr = parseFloat(getAttr(rhrRecs[rhrRecs.length-1],'value'));
+          if (!isNaN(rhr)) { extracted.stress = Math.max(0,Math.min(100,Math.round((rhr-45)*2.5))); extracted.rhr = rhr; }
+        }
+        if (!Object.keys(extracted).length) {
+          statusEl.textContent = 'No records found. Make sure you uploaded export.xml (not the .zip).';
+          return;
+        }
+        var w3 = JSON.parse(localStorage.getItem('fauna_wearable') || '{}');
+        Object.assign(w3, extracted); w3.lastSync = Date.now(); w3.source = 'apple';
+        localStorage.setItem('fauna_wearable', JSON.stringify(w3));
+        var parts2 = [];
+        if (extracted.hrv)   parts2.push('HRV: ' + extracted.hrv + 'ms');
+        if (extracted.sleep) parts2.push('Sleep: ' + extracted.sleep + 'h');
+        if (extracted.rhr)   parts2.push('RHR: ' + extracted.rhr + 'bpm');
+        statusEl.innerHTML = '<span style="color:var(--green-deep);font-weight:700">\u2713 Imported: ' + parts2.join(' \u00b7 ') + '</span>';
+        var setEl4 = function(id,val){ var el=document.getElementById(id); if(el) el.textContent=val; };
+        if (w3.hrv)   setEl4('wb-hrv', w3.hrv);
+        if (w3.sleep) setEl4('wb-sleep', w3.sleep+'h');
+        if (w3.stress) setEl4('wb-stress', w3.stress);
+        if (typeof renderHomeScreen === 'function') renderHomeScreen();
+        var ad = document.getElementById('apple-status');
+        if (ad) ad.innerHTML = '<span class="connected-badge">\u2713 Synced</span>';
+      } catch(err) { statusEl.textContent = 'Error reading file. Try manual entry instead.'; }
+    };
+    reader.readAsText(file.size > 2000000 ? file.slice(0,2000000) : file);
   }
 
   function closeConnect() {
@@ -3538,19 +3688,16 @@
   }
 
   function connectDevice(device) {
-    connections[device] = true;
-    const statusEl = document.getElementById(device + '-status');
-    statusEl.innerHTML = '<span class="connected-badge">✓ Connected</span>';
-    closeConnect();
-    const t = document.getElementById('toast');
-    t.textContent = '✓ ' + deviceData[device].name + ' connected';
-    t.classList.add('show');
-    setTimeout(() => { t.classList.remove('show'); t.textContent = '✓ Logged for today'; }, 2500);
+    var statusEl = document.getElementById(device + '-status');
+    if (statusEl) statusEl.innerHTML = '<span class="connected-badge">\u2713 Synced</span>';
   }
 
   function disconnectDevice(device) {
-    connections[device] = false;
-    document.getElementById(device + '-status').textContent = 'Connect →';
+    var w5 = JSON.parse(localStorage.getItem('fauna_wearable') || '{}');
+    delete w5.source;
+    localStorage.setItem('fauna_wearable', JSON.stringify(w5));
+    var statusEl5 = document.getElementById(device + '-status');
+    if (statusEl5) statusEl5.textContent = 'Connect →';
     closeConnect();
   }
 
@@ -3936,12 +4083,16 @@
   // Update wearable display from stored data
   (function() {
     var w = JSON.parse(localStorage.getItem('fauna_wearable') || '{}');
-    var setEl = function(id, val) { var el = document.getElementById(id); if (el && val !== undefined) el.textContent = val; };
-    if (w.hrv)         setEl('wb-hrv', w.hrv);
-    if (w.bodyBattery) setEl('wb-battery', w.bodyBattery);
-    if (w.sleep)       setEl('wb-sleep', w.sleep + 'h');
-    if (w.stress)      setEl('wb-stress', w.stress);
-    // Render home screen after all data is ready
+    var setEl = function(id, val) { var el = document.getElementById(id); if (el) el.textContent = val !== undefined && val !== null ? val : '--'; };
+    setEl('wb-hrv',     w.hrv     ? w.hrv         : null);
+    setEl('wb-battery', w.bodyBattery ? w.bodyBattery : null);
+    setEl('wb-sleep',   w.sleep   ? w.sleep + 'h'  : null);
+    setEl('wb-stress',  w.stress  ? w.stress       : null);
+    // Update drawer status if already synced
+    if (w.source) {
+      var statusEl = document.getElementById(w.source + '-status');
+      if (statusEl) statusEl.innerHTML = '<span class="connected-badge">✓ Synced</span>';
+    }
     if (typeof renderHomeScreen === 'function') renderHomeScreen();
   })();
 
