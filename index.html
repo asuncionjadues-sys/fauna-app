@@ -2593,6 +2593,122 @@
   </div>
 
 <script>
+  // ── CYCLE ENGINE ──
+  var cycleEngine = (function() {
+    var PHASE_DEFS = [
+      { name: 'menstrual',  label: 'Menstrual',  days: [1,2,3,4,5],           color: '#C0392B', icon: '🌑' },
+      { name: 'follicular', label: 'Follicular', days: [6,7,8,9,10,11,12,13], color: '#E8762B', icon: '🌱' },
+      { name: 'ovulatory',  label: 'Ovulatory',  days: [14,15,16,17],         color: '#D4AF37', icon: '✨' },
+      { name: 'luteal',     label: 'Luteal',     days: [18,19,20,21,22,23,24,25,26,27,28], color: '#2D5016', icon: '🌕' },
+    ];
+
+    function getPhaseForDay(cycleDay, cycleLen) {
+      cycleLen = cycleLen || 28;
+      // Scale phase boundaries proportionally for non-28 cycles
+      var ratio = cycleDay / cycleLen;
+      if (ratio <= 0.18) return 'menstrual';
+      if (ratio <= 0.46) return 'follicular';
+      if (ratio <= 0.57) return 'ovulatory';
+      return 'luteal';
+    }
+
+    function getCycleDay(lastPeriodMs, cycleLen) {
+      cycleLen = cycleLen || 28;
+      var now = new Date();
+      now.setHours(0,0,0,0);
+      var last = new Date(lastPeriodMs);
+      last.setHours(0,0,0,0);
+      var diffDays = Math.floor((now - last) / 86400000);
+      var day = (diffDays % cycleLen) + 1;
+      if (day < 1) day += cycleLen;
+      return day;
+    }
+
+    function getState() {
+      var stored = localStorage.getItem('fauna_cycleStart');
+      var cycleLen = parseInt(localStorage.getItem('fauna_cycleLen') || '28');
+      if (!stored) {
+        return { phase: 'follicular', day: 8, cycleLen: cycleLen, hasData: false };
+      }
+      var day = getCycleDay(parseInt(stored), cycleLen);
+      var phase = getPhaseForDay(day, cycleLen);
+      return { phase: phase, day: day, cycleLen: cycleLen, hasData: true };
+    }
+
+    return { getState: getState, getPhaseForDay: getPhaseForDay, PHASE_DEFS: PHASE_DEFS };
+  })();
+
+  var _cycleState = cycleEngine.getState();
+  var currentPhase = _cycleState.phase;
+  var currentCycleDay = _cycleState.day;
+  var currentCycleLen = _cycleState.cycleLen;
+
+  var PHASE_COLORS = { menstrual: '#C0392B', follicular: '#E8762B', ovulatory: '#D4AF37', luteal: '#2D5016' };
+  var PHASE_LABELS = { menstrual: 'Menstrual', follicular: 'Follicular', ovulatory: 'Ovulatory', luteal: 'Luteal' };
+  var PHASE_BADGES = {
+    menstrual:  '🌑 Rest & restore',
+    follicular: '⚡ Peak incoming',
+    ovulatory:  "✨ You're peaking",
+    luteal:     '🌕 Wind down'
+  };
+  var PHASE_SUBS = {
+    menstrual:  'Rest, replenish, reflect',
+    follicular: 'Energy builds. Great time to train hard.',
+    ovulatory:  'Peak energy, strength, confidence.',
+    luteal:     'Slow down, prioritize recovery.'
+  };
+
+  function refreshCycleState() {
+    _cycleState = cycleEngine.getState();
+    currentPhase = _cycleState.phase;
+    currentCycleDay = _cycleState.day;
+    currentCycleLen = _cycleState.cycleLen;
+    updateHomePhaseCard();
+    if (typeof renderInsights === 'function') renderInsights();
+    updateCycleScreen();
+  }
+
+  function updateHomePhaseCard() {
+    var ph = currentPhase;
+    var el = document.querySelector('.home-phase-header h2') || document.querySelector('[data-i18n="phase_follicular"]');
+    if (el) el.textContent = PHASE_LABELS[ph] + ' Phase';
+    var sub = document.querySelector('[data-i18n="home_day_sub"]');
+    if (sub) sub.textContent = 'Day ' + currentCycleDay + ' of ' + currentCycleLen + ' · ' + (currentCycleDay <= 5 ? 'Rest phase' : currentCycleDay <= 13 ? 'Rising energy' : currentCycleDay <= 17 ? 'Peak phase' : 'Wind-down');
+    var badge = document.querySelector('[data-i18n="home_badge_follicular"]');
+    if (badge) badge.textContent = PHASE_BADGES[ph];
+    var header = document.querySelector('.home-header');
+    if (header) {
+      var gradients = {
+        menstrual:  'linear-gradient(135deg, #8B2020 0%, #C0392B 100%)',
+        follicular: 'linear-gradient(135deg, #2D5016 0%, #4a7c28 50%, #E8762B 100%)',
+        ovulatory:  'linear-gradient(135deg, #8B6914 0%, #D4AF37 100%)',
+        luteal:     'linear-gradient(135deg, #1a2f0a 0%, #2D5016 100%)'
+      };
+      header.style.background = gradients[ph];
+    }
+  }
+
+  function updateCycleScreen() {
+    var ph = currentPhase;
+    var sub = document.querySelector('[data-i18n="cycle_sub"]');
+    if (sub) sub.textContent = currentCycleLen + '-day cycle · Currently Day ' + currentCycleDay;
+    document.querySelectorAll('.phase-card').forEach(function(card) {
+      card.style.opacity = '0.75';
+      card.style.transform = 'scale(0.98)';
+      card.style.boxShadow = '';
+      var h3 = card.querySelector('h3');
+      if (h3) {
+        var key = h3.getAttribute('data-i18n') || '';
+        if (key === 'phase_' + ph || key === 'phase_' + ph + '_here') {
+          card.style.opacity = '1';
+          card.style.transform = 'scale(1.02)';
+          card.style.boxShadow = '0 6px 24px rgba(0,0,0,0.18)';
+        }
+      }
+    });
+  }
+
+
   // ── LEVEL / ONBOARDING ──
   var currentTier = localStorage.getItem('fauna_level') || null;
 
@@ -2703,12 +2819,12 @@
       document.getElementById('onboard-step2').classList.add('hidden');
     } else if (hasLevel && !hasCycle) {
       document.getElementById('onboard-overlay').classList.add('hidden');
-      // Show step 2 so they can add period date
       document.getElementById('onboard-step2').classList.remove('hidden');
       selectedCycleLen = 28;
     }
-    // else both overlays visible (first launch)
-    refreshCycleState();
+    // Apply cycle state to DOM (safe — only touches data, no renderInsights yet)
+    updateHomePhaseCard();
+    updateCycleScreen();
   })();
 
   function goTo(name) {
@@ -2719,127 +2835,6 @@
     window.scrollTo(0, 0);
   }
 
-  // ── INSIGHTS ENGINE ──
-  // ── CYCLE ENGINE ──
-  var cycleEngine = (function() {
-    var PHASE_DEFS = [
-      { name: 'menstrual',  label: 'Menstrual',  days: [1,2,3,4,5],           color: '#C0392B', icon: '🌑' },
-      { name: 'follicular', label: 'Follicular', days: [6,7,8,9,10,11,12,13], color: '#E8762B', icon: '🌱' },
-      { name: 'ovulatory',  label: 'Ovulatory',  days: [14,15,16,17],         color: '#D4AF37', icon: '✨' },
-      { name: 'luteal',     label: 'Luteal',     days: [18,19,20,21,22,23,24,25,26,27,28], color: '#2D5016', icon: '🌕' },
-    ];
-
-    function getPhaseForDay(cycleDay, cycleLen) {
-      cycleLen = cycleLen || 28;
-      // Scale phase boundaries proportionally for non-28 cycles
-      var ratio = cycleDay / cycleLen;
-      if (ratio <= 0.18) return 'menstrual';
-      if (ratio <= 0.46) return 'follicular';
-      if (ratio <= 0.57) return 'ovulatory';
-      return 'luteal';
-    }
-
-    function getCycleDay(lastPeriodMs, cycleLen) {
-      cycleLen = cycleLen || 28;
-      var now = new Date();
-      now.setHours(0,0,0,0);
-      var last = new Date(lastPeriodMs);
-      last.setHours(0,0,0,0);
-      var diffDays = Math.floor((now - last) / 86400000);
-      var day = (diffDays % cycleLen) + 1;
-      if (day < 1) day += cycleLen;
-      return day;
-    }
-
-    function getState() {
-      var stored = localStorage.getItem('fauna_cycleStart');
-      var cycleLen = parseInt(localStorage.getItem('fauna_cycleLen') || '28');
-      if (!stored) {
-        return { phase: 'follicular', day: 8, cycleLen: cycleLen, hasData: false };
-      }
-      var day = getCycleDay(parseInt(stored), cycleLen);
-      var phase = getPhaseForDay(day, cycleLen);
-      return { phase: phase, day: day, cycleLen: cycleLen, hasData: true };
-    }
-
-    return { getState: getState, getPhaseForDay: getPhaseForDay, PHASE_DEFS: PHASE_DEFS };
-  })();
-
-  var _cycleState = cycleEngine.getState();
-  var currentPhase = _cycleState.phase;
-  var currentCycleDay = _cycleState.day;
-  var currentCycleLen = _cycleState.cycleLen;
-
-  function refreshCycleState() {
-    _cycleState = cycleEngine.getState();
-    currentPhase = _cycleState.phase;
-    currentCycleDay = _cycleState.day;
-    currentCycleLen = _cycleState.cycleLen;
-    updateHomePhaseCard();
-    renderInsights();
-    updateCycleScreen();
-  }
-
-  var PHASE_COLORS = { menstrual: '#C0392B', follicular: '#E8762B', ovulatory: '#D4AF37', luteal: '#2D5016' };
-  var PHASE_LABELS = { menstrual: 'Menstrual', follicular: 'Follicular', ovulatory: 'Ovulatory', luteal: 'Luteal' };
-  var PHASE_BADGES = {
-    menstrual:  '🌑 Rest & restore',
-    follicular: '⚡ Peak incoming',
-    ovulatory:  '✨ You\'re peaking',
-    luteal:     '🌕 Wind down'
-  };
-  var PHASE_SUBS = {
-    menstrual:  'Rest, replenish, reflect',
-    follicular: 'Energy builds. Great time to train hard.',
-    ovulatory:  'Peak energy, strength, confidence.',
-    luteal:     'Slow down, prioritize recovery.'
-  };
-
-  function updateHomePhaseCard() {
-    var ph = currentPhase;
-    var col = PHASE_COLORS[ph];
-    // Phase name
-    var el = document.querySelector('[data-i18n="phase_follicular"]') || document.querySelector('.home-phase-header h2');
-    if (el) el.textContent = PHASE_LABELS[ph] + ' Phase';
-    // Day sub
-    var sub = document.querySelector('[data-i18n="home_day_sub"]');
-    if (sub) sub.textContent = 'Day ' + currentCycleDay + ' of ' + currentCycleLen + ' · ' + (currentCycleDay <= 5 ? 'Rest phase' : currentCycleDay <= 13 ? 'Rising energy' : currentCycleDay <= 17 ? 'Peak phase' : 'Wind-down');
-    // Badge
-    var badge = document.querySelector('[data-i18n="home_badge_follicular"]');
-    if (badge) badge.textContent = PHASE_BADGES[ph];
-    // Header gradient
-    var header = document.querySelector('.home-header');
-    if (header) {
-      var gradients = {
-        menstrual:  'linear-gradient(135deg, #8B2020 0%, #C0392B 100%)',
-        follicular: 'linear-gradient(135deg, #2D5016 0%, #4a7c28 50%, #E8762B 100%)',
-        ovulatory:  'linear-gradient(135deg, #8B6914 0%, #D4AF37 100%)',
-        luteal:     'linear-gradient(135deg, #1a2f0a 0%, #2D5016 100%)'
-      };
-      header.style.background = gradients[ph];
-    }
-  }
-
-  function updateCycleScreen() {
-    var ph = currentPhase;
-    // Update cycle subtitle
-    var sub = document.querySelector('[data-i18n="cycle_sub"]');
-    if (sub) sub.textContent = currentCycleLen + '-day cycle · Currently Day ' + currentCycleDay;
-    // Highlight the active phase card
-    document.querySelectorAll('.phase-card').forEach(function(card) {
-      card.style.opacity = '0.7';
-      card.style.transform = 'scale(0.98)';
-      var h3 = card.querySelector('h3');
-      if (h3) {
-        var cardPhase = h3.getAttribute('data-i18n') || '';
-        if (cardPhase === 'phase_' + ph || cardPhase === 'phase_' + ph + '_here') {
-          card.style.opacity = '1';
-          card.style.transform = 'scale(1.01)';
-          card.style.boxShadow = '0 6px 24px rgba(0,0,0,0.15)';
-        }
-      }
-    });
-  }
   const bodyBattery = 62;
   const hrv = 71;
   const sleepHrs = 7.3;
