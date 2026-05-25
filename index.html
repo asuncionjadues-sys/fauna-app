@@ -1684,13 +1684,11 @@
         <div class="date-chip" id="home-date-chip"></div>
       </div>
       <div class="phase-card">
-        <svg class="phase-wheel" viewBox="0 0 64 64">
+        <svg class="phase-wheel" id="phase-wheel-svg" viewBox="0 0 64 64">
           <circle cx="32" cy="32" r="28" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="6"/>
-          <circle cx="32" cy="32" r="28" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="6" stroke-dasharray="175.9" stroke-dashoffset="0" stroke-linecap="round"/>
-          <!-- Follicular phase arc ~25% -->
-          <circle cx="32" cy="32" r="28" fill="none" stroke="#E8762B" stroke-width="6" stroke-dasharray="44 131.9" stroke-dashoffset="44" transform="rotate(-90 32 32)" stroke-linecap="round"/>
+          <circle id="phase-wheel-arc" cx="32" cy="32" r="28" fill="none" stroke="#E8762B" stroke-width="6" stroke-dasharray="44 131.9" stroke-dashoffset="44" transform="rotate(-90 32 32)" stroke-linecap="round"/>
           <circle cx="32" cy="32" r="18" fill="rgba(255,255,255,0.08)"/>
-          <text x="32" y="36" text-anchor="middle" fill="white" font-size="14" font-weight="700" font-family="Inter">8</text>
+          <text id="phase-wheel-day" x="32" y="36" text-anchor="middle" fill="white" font-size="14" font-weight="700" font-family="Inter">8</text>
         </svg>
         <div class="phase-info">
           <h2 data-i18n="phase_follicular">Follicular Phase</h2>
@@ -1704,35 +1702,35 @@
       <div class="energy-row">
         <div>
           <div class="energy-label" data-i18n="energy_label">Energy</div>
-          <div class="energy-score">78</div>
+          <div class="energy-score" id="home-energy-score">--</div>
         </div>
         <div class="energy-bar-wrap">
-          <div class="energy-bar"><div class="energy-fill"></div></div>
-          <div class="energy-sub" data-i18n="energy_sub">Above average for your phase</div>
+          <div class="energy-bar"><div class="energy-fill" id="home-energy-fill" style="width:0%"></div></div>
+          <div class="energy-sub" id="home-energy-sub">Calculating...</div>
         </div>
       </div>
 
       <div class="section-title" data-i18n="home_guidance">Today's guidance</div>
-      <div class="insight-cards">
+      <div class="insight-cards" id="home-guidance-cards">
         <div class="insight-card train">
-          <div class="insight-icon">💪</div>
+          <div class="insight-icon" id="guidance-train-icon">💪</div>
           <div class="insight-text">
-            <h3 data-i18n="home_train_title">Train Hard</h3>
-            <p data-i18n="home_train_body">Estrogen rising. Peak strength window this week.</p>
+            <h3 id="guidance-train-title">Train Hard</h3>
+            <p id="guidance-train-body">Estrogen rising. Peak strength window this week.</p>
           </div>
         </div>
         <div class="insight-card eat">
-          <div class="insight-icon">🌾</div>
+          <div class="insight-icon" id="guidance-eat-icon">🌾</div>
           <div class="insight-text">
-            <h3 data-i18n="home_eat_title">Eat Smart</h3>
-            <p data-i18n="home_eat_body">Complex carbs + iron-rich foods. Limit dairy today.</p>
+            <h3 id="guidance-eat-title">Eat Smart</h3>
+            <p id="guidance-eat-body">Complex carbs + iron-rich foods. Limit dairy today.</p>
           </div>
         </div>
         <div class="insight-card recover">
-          <div class="insight-icon">🌙</div>
+          <div class="insight-icon" id="guidance-recover-icon">🌙</div>
           <div class="insight-text">
-            <h3 data-i18n="home_recover_title">Recovery</h3>
-            <p data-i18n="home_recover_body">7–8hrs sleep. HRV tracking optimal range.</p>
+            <h3 id="guidance-recover-title">Recovery</h3>
+            <p id="guidance-recover-body">7–8hrs sleep. HRV tracking optimal range.</p>
           </div>
         </div>
       </div>
@@ -2666,6 +2664,7 @@
     updateHomePhaseCard();
     if (typeof renderInsights === 'function') renderInsights();
     updateCycleScreen();
+    if (typeof renderHomeScreen === 'function') renderHomeScreen();
   }
 
   function updateHomePhaseCard() {
@@ -2687,6 +2686,231 @@
       header.style.background = gradients[ph];
     }
   }
+
+
+  // ══════════════════════════════════════════════════════
+  // CONNECTED INTELLIGENCE ENGINE
+  // Pulls from: cycle phase, log data (energy/mood/symptoms),
+  //             wearable data (HRV/sleep/body battery),
+  //             meal history — produces live home screen
+  // ══════════════════════════════════════════════════════
+
+  var GUIDANCE_DATA = {
+    menstrual: {
+      train: {
+        high:   { icon: '🧘', title: 'Gentle movement',    body: 'Estrogen and progesterone are at their lowest. Light yoga, walking, or swimming — nothing that taxes your CNS.' },
+        mid:    { icon: '🚶', title: 'Easy movement',       body: 'Day ' + '{{day}}' + ' of your period. Short walk or mobility work is enough. Your body is doing real work right now.' },
+        low:    { icon: '💤', title: 'Rest today',          body: 'Low energy + period day {{day}}. Full rest is a training decision. You come back stronger from it.' }
+      },
+      eat: {
+        high:   { icon: '🥩', title: 'Iron priority',       body: 'You\'re losing iron right now. Lean red meat, lentils, spinach — pair with vitamin C to absorb more.' },
+        mid:    { icon: '🥗', title: 'Anti-inflammatory',   body: 'Omega-3s reduce prostaglandins that cause cramps. Salmon, walnuts, flaxseed. Limit processed foods today.' },
+        low:    { icon: '🫚', title: 'Warm, easy foods',    body: 'Digestion slows during menstruation. Warm soups, cooked vegetables, ginger tea. Easy on your gut.' }
+      },
+      recover: {
+        high:   { icon: '🛁', title: 'Heat therapy',        body: 'Heat on your lower back or abdomen reduces prostaglandin-driven cramps by up to 47% in studies. Use it.' },
+        mid:    { icon: '🌙', title: '8+ hrs sleep',        body: 'Progesterone drop affects sleep architecture. Get to bed early. Melatonin is fine if needed.' },
+        low:    { icon: '🔋', title: 'Full recovery day',   body: 'Low HRV + period day = your body signaling recovery. Honor it. Train tomorrow.' }
+      }
+    },
+    follicular: {
+      train: {
+        high:   { icon: '💪', title: 'Push the weights',    body: 'Estrogen is rising — this is your peak window for strength gains and muscle building. Lift heavy today.' },
+        mid:    { icon: '⚡', title: 'High intensity ready', body: 'Energy building through day {{day}}. Good day for intervals, tempo runs, or a hard practice session.' },
+        low:    { icon: '🏃', title: 'Moderate training',   body: 'Sleep or HRV flagging slightly. Still a great training day — just pace yourself in the first 20 minutes.' }
+      },
+      eat: {
+        high:   { icon: '🥚', title: 'Protein + iron',      body: 'Your muscles are primed to grow. Hit 1.6–2g protein per kg today. Eggs, chicken, lentils. Replenish iron stores lost in menstruation.' },
+        mid:    { icon: '🌾', title: 'Complex carbs',        body: 'Estrogen improves insulin sensitivity. Great window for complex carbs — oats, quinoa, sweet potato — without the blood sugar spike.' },
+        low:    { icon: '🫐', title: 'Antioxidants',         body: 'Low energy logged. Berries, dark leafy greens, and beets support mitochondrial function and may help lift energy naturally.' }
+      },
+      recover: {
+        high:   { icon: '😴', title: 'Optimize sleep',      body: 'Estrogen improves sleep quality in this phase. Aim for 7–9hrs. Your recovery is efficient right now — use it.' },
+        mid:    { icon: '🧊', title: 'Active recovery',     body: 'Cold exposure or contrast therapy (hot/cold) amplifies follicular phase adaptation. 3–5 min cold post-workout if available.' },
+        low:    { icon: '📉', title: 'HRV is low',          body: 'Low HRV despite good phase. Check hydration, stress, and sleep quality. Today: foam roll, light stretch, early bed.' }
+      }
+    },
+    ovulatory: {
+      train: {
+        high:   { icon: '🏆', title: 'Peak performance',    body: 'Estrogen and testosterone peak together. You are at your strongest and fastest. This is your window — compete, race, max out.' },
+        mid:    { icon: '🔥', title: 'High output day',     body: 'Ovulatory phase day {{day}}. Reaction time, coordination, and pain tolerance are all elevated. Push it.' },
+        low:    { icon: '⚠️', title: 'Ligament caution',    body: 'High estrogen = looser ligaments. Peak injury risk is real. Warm up fully, focus on landing mechanics before explosive work.' }
+      },
+      eat: {
+        high:   { icon: '🥦', title: 'Cruciferous veg',     body: 'Broccoli, cauliflower, and Brussels sprouts support estrogen metabolism and detox at ovulation. Don\'t skip them today.' },
+        mid:    { icon: '🐟', title: 'Light protein',        body: 'Appetite often drops at ovulation. Lean fish, tofu, Greek yogurt — easy to eat, high in protein, supports peak output.' },
+        low:    { icon: '💧', title: 'Hydrate more',         body: 'Basal body temp rises 0.2–0.5°C at ovulation. You\'re losing more fluid. Add an extra 500ml water today.' }
+      },
+      recover: {
+        high:   { icon: '🌿', title: 'Don\'t skip cooldown', body: 'High-output days need structured cooldown. 10 min easy movement post-session prevents the cortisol crash and keeps HRV stable.' },
+        mid:    { icon: '🛏️', title: 'Sleep quality',        body: 'Testosterone surge may wake you earlier. Keep the room cool. Sleep is where ovulatory gains get locked in.' },
+        low:    { icon: '🔋', title: 'Low battery flagged',  body: 'Wearable showing fatigue. Unusual for ovulation unless you overtrained. Check yesterday\'s session — may have been too much.' }
+      }
+    },
+    luteal: {
+      train: {
+        high:   { icon: '🏋️', title: 'Strength hold',       body: 'Progesterone favors fat burning. Moderate strength or tempo work. Not the week to set PRs — the week to build your base.' },
+        mid:    { icon: '🚴', title: 'Steady state',         body: 'Luteal day {{day}}. Low-to-moderate intensity holds muscle without taxing your hormonal system. Bike, swim, circuit work.' },
+        low:    { icon: '🧘', title: 'Ease back',            body: 'Low energy + late luteal. Your body is preparing for menstruation. Yoga, walking, mobility. You\'re not losing fitness — you\'re recovering.' }
+      },
+      eat: {
+        high:   { icon: '🍫', title: 'Magnesium matters',   body: 'Magnesium drops in luteal phase — this is why you crave chocolate. Dark chocolate (70%+), pumpkin seeds, almonds. Supplement 300mg if needed.' },
+        mid:    { icon: '🥑', title: 'Healthy fats',         body: 'Progesterone increases fat utilization. Avocado, olive oil, nuts. Also reduces bloating from the sodium retention luteal causes.' },
+        low:    { icon: '🚫', title: 'Watch sodium + caffeine', body: 'Late luteal: aldosterone causes water retention. High sodium amplifies bloating. Caffeine amplifies anxiety. Both worth reducing today.' }
+      },
+      recover: {
+        high:   { icon: '🌙', title: 'Sleep priority',      body: 'Progesterone raises body temp and fragments sleep. Keep bedroom cool (65-68°F). Avoid screens 1hr before bed. Magnesium glycinate helps.' },
+        mid:    { icon: '🧴', title: 'Reduce inflammation', body: 'Omega-3s, turmeric, and cherry juice are evidence-backed for luteal phase inflammation and PMS symptom reduction.' },
+        low:    { icon: '💚', title: 'Rest without guilt',  body: 'Low energy in late luteal is physiologically normal — not weakness. Protect your sleep, eat well, and your next follicular phase will be stronger.' }
+      }
+    }
+  };
+
+  var SYMPTOM_NUDGES = {
+    'Cramps':    { eat: 'Ginger tea + omega-3s reduce prostaglandins driving your cramps. Avoid caffeine and dairy today.', recover: 'Heat therapy on lower abdomen. Studies show it matches ibuprofen for cramp relief.' },
+    'Bloating':  { eat: 'Cut sodium and carbonated drinks today. Potassium-rich foods (banana, avocado) counter water retention.', recover: 'Light walking reduces bloating better than rest. 20 min easy movement.' },
+    'Fatigue':   { train: 'Fatigue logged. Scale back intensity by 30%. Movement still helps — just not at full output.', eat: 'Iron + B12 check. If fatigue is recurring, consider getting levels tested. Lentils, beef, eggs today.' },
+    'Cravings':  { eat: 'Cravings = magnesium or serotonin drop. Dark chocolate, pumpkin seeds, and complex carbs address the root cause, not just the symptom.' },
+    'Low mood':  { train: 'Movement is the most evidence-backed intervention for luteal/premenstrual low mood. Even 20 min at 60% effort raises serotonin.', recover: 'Sunlight in the morning + omega-3 supplementation both have RCT evidence for premenstrual mood regulation.' },
+    'Energized': { train: 'You logged energy — use it. Push intensity today.' }
+  };
+
+  function computeEnergyScore() {
+    var phase = currentPhase;
+    var today = getDateKey ? getDateKey(0) : null;
+
+    // Base score from phase (out of 100)
+    var phaseBase = { menstrual: 45, follicular: 72, ovulatory: 88, luteal: 60 };
+    var score = phaseBase[phase] || 65;
+
+    // Adjust from today's log if available
+    var allLogs = JSON.parse(localStorage.getItem('fauna_logs') || '[]');
+    var todayLog = today ? allLogs.find(function(l){ return l.date === today; }) : null;
+    if (todayLog && todayLog.energy) {
+      // Blend phase base (40%) with logged energy (60%), scaled 1-10 to 0-100
+      score = Math.round(score * 0.4 + (todayLog.energy * 10) * 0.6);
+    }
+
+    // Adjust from symptoms
+    if (todayLog && todayLog.symptoms && todayLog.symptoms.length) {
+      if (todayLog.symptoms.some(function(s){ return s.includes('Fatigue'); })) score -= 12;
+      if (todayLog.symptoms.some(function(s){ return s.includes('Low mood'); })) score -= 8;
+      if (todayLog.symptoms.some(function(s){ return s.includes('Energized'); })) score += 10;
+      if (todayLog.symptoms.some(function(s){ return s.includes('Cramps'); })) score -= 10;
+    }
+
+    // Adjust from wearable data (stored from last Garmin/Apple sync)
+    var wearable = JSON.parse(localStorage.getItem('fauna_wearable') || '{}');
+    if (wearable.hrv) {
+      // HRV above 60 = good; below 40 = concerning
+      if (wearable.hrv >= 60) score += 8;
+      else if (wearable.hrv < 40) score -= 12;
+    }
+    if (wearable.sleep) {
+      if (wearable.sleep >= 7.5) score += 6;
+      else if (wearable.sleep < 6) score -= 10;
+    }
+    if (wearable.bodyBattery) {
+      score = Math.round(score * 0.6 + wearable.bodyBattery * 0.4);
+    }
+
+    return Math.min(100, Math.max(5, score));
+  }
+
+  function getEnergyTier(score) {
+    if (score >= 75) return 'high';
+    if (score >= 45) return 'mid';
+    return 'low';
+  }
+
+  function getEnergyLabel(score, phase) {
+    if (score >= 80) return 'Excellent for your phase';
+    if (score >= 65) return 'Above average for your phase';
+    if (score >= 50) return 'On track for ' + PHASE_LABELS[phase];
+    if (score >= 35) return 'Below average today — listen to your body';
+    return 'Rest mode — recovery is productive';
+  }
+
+  function renderHomeScreen() {
+    var phase = currentPhase;
+    var day   = currentCycleDay;
+    var len   = currentCycleLen;
+
+    // 1. SVG wheel — update day number and arc length
+    var wheelDay = document.getElementById('phase-wheel-day');
+    if (wheelDay) wheelDay.textContent = day;
+    var wheelArc = document.getElementById('phase-wheel-arc');
+    if (wheelArc) {
+      var circumference = 2 * Math.PI * 28; // r=28 → 175.9
+      var progress = day / len;
+      var arcLen = Math.round(progress * circumference);
+      var gap = Math.round(circumference - arcLen);
+      var colors = { menstrual: '#C0392B', follicular: '#E8762B', ovulatory: '#D4AF37', luteal: '#8FBC44' };
+      wheelArc.setAttribute('stroke', colors[phase] || '#E8762B');
+      wheelArc.setAttribute('stroke-dasharray', arcLen + ' ' + gap);
+    }
+
+    // 2. Energy score
+    var score = computeEnergyScore();
+    var tier  = getEnergyTier(score);
+    var scoreEl = document.getElementById('home-energy-score');
+    var fillEl  = document.getElementById('home-energy-fill');
+    var subEl   = document.getElementById('home-energy-sub');
+    if (scoreEl) scoreEl.textContent = score;
+    if (fillEl)  fillEl.style.width = score + '%';
+    if (subEl)   subEl.textContent = getEnergyLabel(score, phase);
+
+    // 3. Guidance cards — phase + energy tier aware
+    var g = GUIDANCE_DATA[phase];
+    if (!g) return;
+    var train   = g.train[tier];
+    var eat     = g.eat[tier];
+    var recover = g.recover[tier];
+
+    // Inject day number into templates
+    function fillDay(str) { return str.replace(/\{\{day\}\}/g, day); }
+
+    // Check symptoms for nudges
+    var today = typeof getDateKey === 'function' ? getDateKey(0) : null;
+    var allLogs = JSON.parse(localStorage.getItem('fauna_logs') || '[]');
+    var todayLog = today ? allLogs.find(function(l){ return l.date === today; }) : null;
+    if (todayLog && todayLog.symptoms) {
+      todayLog.symptoms.forEach(function(sym) {
+        var clean = sym.replace(/^[^\w]+/, '').trim();
+        // strip emoji prefix
+        var key = Object.keys(SYMPTOM_NUDGES).find(function(k){ return sym.includes(k); });
+        if (key) {
+          var nudge = SYMPTOM_NUDGES[key];
+          if (nudge.eat)     eat.body     = nudge.eat;
+          if (nudge.train)   train.body   = nudge.train;
+          if (nudge.recover) recover.body = nudge.recover;
+        }
+      });
+    }
+
+    var setCard = function(iconId, titleId, bodyId, data) {
+      var ic = document.getElementById(iconId);
+      var ti = document.getElementById(titleId);
+      var bo = document.getElementById(bodyId);
+      if (ic) ic.textContent = data.icon;
+      if (ti) ti.textContent = data.title;
+      if (bo) bo.textContent = fillDay(data.body);
+    };
+    setCard('guidance-train-icon',   'guidance-train-title',   'guidance-train-body',   train);
+    setCard('guidance-eat-icon',     'guidance-eat-title',     'guidance-eat-body',     eat);
+    setCard('guidance-recover-icon', 'guidance-recover-title', 'guidance-recover-body', recover);
+  }
+
+  // ── WEARABLE MOCK DATA LAYER ──
+  // In production this connects to HealthKit / Garmin Connect API
+  // For now seeds realistic data so the engine works
+  function seedWearableIfEmpty() {
+    if (!localStorage.getItem('fauna_wearable')) {
+      var defaults = { hrv: 58, sleep: 7.2, bodyBattery: 65, stress: 28, lastSync: Date.now() };
+      localStorage.setItem('fauna_wearable', JSON.stringify(defaults));
+    }
+  }
+  seedWearableIfEmpty();
 
   function updateCycleScreen() {
     var ph = currentPhase;
@@ -3653,6 +3877,18 @@
     document.documentElement.lang = code;
   }
 
+  // Update wearable display from stored data
+  (function() {
+    var w = JSON.parse(localStorage.getItem('fauna_wearable') || '{}');
+    var setEl = function(id, val) { var el = document.getElementById(id); if (el && val !== undefined) el.textContent = val; };
+    if (w.hrv)         setEl('wb-hrv', w.hrv);
+    if (w.bodyBattery) setEl('wb-battery', w.bodyBattery);
+    if (w.sleep)       setEl('wb-sleep', w.sleep + 'h');
+    if (w.stress)      setEl('wb-stress', w.stress);
+    // Render home screen after all data is ready
+    if (typeof renderHomeScreen === 'function') renderHomeScreen();
+  })();
+
   // Apply saved language on boot
   (function() {
     if (currentLang && currentLang !== 'en') applyLang(currentLang);
@@ -3959,7 +4195,7 @@
               { emoji: '🫙', name: 'Ground flaxseed (1-2 tbsp)', why: 'Lignans modulate estrogen from excess. Add to oats or yogurt.' },
             ]
           },
-          { heading: '🚫 Limit', body: 'Alcohol blunts estrogen signaling and disrupts the liver’s ability to process hormones. Excess caffeine reduces iron absorption by up to 60% — avoid coffee or tea with iron-rich meals.', foods: [] }
+          { heading: '🚫 Limit', body: 'Alcohol blunts estrogen signaling and disrupts the liver\'s ability to process hormones. Excess caffeine reduces iron absorption by up to 60% — avoid coffee or tea with iron-rich meals.', foods: [] }
         ]
       },
       ovulatory: {
@@ -4368,6 +4604,98 @@
     { k: ['energy drink','red bull','monster','celsius'], c: 110, p: 0, cb: 29, fe: 0, mg: 2, note: 'High caffeine. Fine before a match. Skip in late luteal — amplifies anxiety. Always chase with water.' },
     { k: ['matcha latte'], c: 240, p: 9, cb: 32, fe: 1, mg: 8, note: 'L-theanine + caffeine = calm focus. Better than coffee for anxiety-prone phases. Milk adds calcium.' },
     { k: ['chai latte','chai'], c: 240, p: 8, cb: 40, fe: 3, mg: 8, note: 'Ginger + cinnamon have anti-inflammatory properties. Milk adds calcium.' },
+
+    // ── McDONALD'S (actual menu nutrition) ──
+    { k: ['big mac'], c: 550, p: 25, cb: 46, fe: 22, mg: 10, note: 'Two beef patties = solid heme iron + protein. High sodium (1010mg). Works on hard training days.' },
+    { k: ['mcchicken','mc chicken'], c: 400, p: 14, cb: 40, fe: 10, mg: 6, note: 'Moderate protein. Lower calorie than Big Mac. Skip the mayo to save 100 calories.' },
+    { k: ['quarter pounder','quarter pound'], c: 520, p: 30, cb: 42, fe: 25, mg: 8, note: 'High protein + iron. One of the better fast-food protein choices.' },
+    { k: ['mcdouble'], c: 390, p: 22, cb: 34, fe: 20, mg: 8, note: 'Two patties, low price, decent protein. One of the most efficient McDonald\'s options.' },
+    { k: ['mcnuggets','chicken nuggets','nuggets'], c: 420, p: 24, cb: 26, fe: 6, mg: 8, note: '10 piece = solid protein. Baked would be better but fried is fine occasionally.' },
+    { k: ['egg mcmuffin','egg muffin'], c: 310, p: 17, cb: 30, fe: 15, mg: 6, note: 'Egg + Canadian bacon + English muffin. Genuinely decent breakfast macro split.' },
+    { k: ['mcdonalds fries','medium fries','large fries'], c: 490, p: 6, cb: 66, fe: 4, mg: 6, note: 'Carb hit. Starchy + salty. If sharing a meal works well as the carb component alongside a protein.' },
+    { k: ['mcdouble meal','big mac meal'], c: 940, p: 36, cb: 112, fe: 24, mg: 14, note: 'Full combo. High everything. Works for a high-output training day. Otherwise split it.' },
+
+    // ── CHICK-FIL-A (actual nutrition) ──
+    { k: ['chick fil a sandwich','chickfila sandwich','crispy chicken sandwich'], c: 470, p: 28, cb: 49, fe: 14, mg: 10, note: 'Chicken breast on brioche. Protein-forward. Classic choice.' },
+    { k: ['chick fil a grilled sandwich','grilled chicken sandwich'], c: 320, p: 29, cb: 33, fe: 12, mg: 8, note: 'Grilled version saves 150 calories with same protein. Better pre-competition choice.' },
+    { k: ['chick fil a nuggets','chickfila nuggets'], c: 380, p: 38, cb: 20, fe: 8, mg: 10, note: '12-count = highest protein-to-calorie ratio at Chick-fil-A. Good post-workout.' },
+    { k: ['chick fil a waffle fries','waffle fries'], c: 420, p: 5, cb: 57, fe: 4, mg: 10, note: 'Classic side. Pair with a protein option. Potassium helps post-training cramp prevention.' },
+    { k: ['chick fil a salad','spicy southwest salad'], c: 450, p: 27, cb: 33, fe: 15, mg: 15, note: 'Best macro balance at Chick-fil-A. Grilled chicken + greens + avocado. Go for it.' },
+
+    // ── CHIPOTLE (actual nutrition — bowl basis) ──
+    { k: ['chipotle chicken bowl','chicken burrito bowl'], c: 665, p: 36, cb: 74, fe: 22, mg: 22, note: 'White rice + chicken + black beans + salsa = balanced meal. Add fajita veggies for more nutrients.' },
+    { k: ['chipotle steak bowl','steak burrito bowl'], c: 680, p: 37, cb: 72, fe: 30, mg: 20, note: 'Steak has more heme iron than chicken. Excellent choice during follicular phase for iron replenishment.' },
+    { k: ['chipotle sofritas bowl','sofritas'], c: 580, p: 22, cb: 72, fe: 18, mg: 20, note: 'Plant-based protein. Lower iron than meat — add black beans and pair with vitamin C salsa to boost absorption.' },
+    { k: ['chipotle burrito','chicken burrito'], c: 1000, p: 44, cb: 120, fe: 25, mg: 28, note: 'Full burrito is a full day\'s carbs in one. Share it or eat half. Bowl format is easier to manage nutritionally.' },
+    { k: ['chipotle salad bowl'], c: 440, p: 34, cb: 28, fe: 18, mg: 18, note: 'Lowest carb option at Chipotle. Good if you are in luteal and watching bloat. High protein.' },
+
+    // ── SUBWAY (6-inch basis) ──
+    { k: ['subway turkey','turkey sub'], c: 280, p: 18, cb: 38, fe: 15, mg: 8, note: '6-inch turkey on wheat. Lean protein + whole grain. One of the best fast food macros available.' },
+    { k: ['subway tuna','tuna sub'], c: 380, p: 20, cb: 36, fe: 10, mg: 10, note: 'Omega-3s from tuna. Watch the mayo — it doubles the calorie count. Great with spinach and tomato.' },
+    { k: ['subway steak','steak and cheese sub'], c: 390, p: 26, cb: 39, fe: 22, mg: 10, note: 'Steak = heme iron. Great follicular phase sub. Ask for extra spinach.' },
+    { k: ['subway veggie','veggie sub','veggie delight'], c: 230, p: 9, cb: 40, fe: 10, mg: 10, note: 'Load it with avocado + hummus to hit protein and fat. Otherwise it is mostly just carbs.' },
+
+    // ── TACO BELL ──
+    { k: ['taco bell crunchy taco','crunchy taco'], c: 170, p: 8, cb: 13, fe: 8, mg: 4, note: 'Small and low calorie. You need 3+ to make a real meal. Ground beef = some iron.' },
+    { k: ['taco bell soft taco'], c: 180, p: 9, cb: 18, fe: 8, mg: 4, note: 'Slightly more carbs than crunchy. Same protein situation.' },
+    { k: ['crunchwrap supreme','crunch wrap'], c: 540, p: 17, cb: 71, fe: 15, mg: 10, note: 'High carb. Comfort food. Works as a carb-load if you train tomorrow morning.' },
+    { k: ['taco bell burrito','bean burrito'], c: 380, p: 13, cb: 56, fe: 12, mg: 12, note: 'Beans = plant-based iron + fiber. Better choice than the meat options for iron + satiety combo.' },
+    { k: ['taco bell power bowl','cantina bowl'], c: 580, p: 27, cb: 68, fe: 15, mg: 15, note: 'Best macro option at Taco Bell. High protein + fiber. Ask for extra beans.' },
+
+    // ── PANDA EXPRESS ──
+    { k: ['orange chicken','panda orange chicken'], c: 490, p: 26, cb: 52, fe: 10, mg: 8, note: 'Sweet + fried. High sugar glaze. Works as a treat. Pair with mixed veggies instead of fried rice to save 200cal.' },
+    { k: ['panda broccoli beef','broccoli beef'], c: 150, p: 10, cb: 13, fe: 10, mg: 8, note: 'Broccoli = vitamin C + folate. Beef = heme iron. One of the better Panda options nutritionally.' },
+    { k: ['panda grilled teriyaki chicken','teriyaki chicken'], c: 300, p: 36, cb: 13, fe: 8, mg: 10, note: 'Highest protein item at Panda. Grilled not fried. Best choice on the menu.' },
+    { k: ['panda fried rice','panda express fried rice'], c: 620, p: 13, cb: 90, fe: 12, mg: 12, note: 'High calorie carb base. Split with a protein for a balanced meal. Skip if trying to manage bloat in luteal.' },
+    { k: ['chow mein','panda chow mein'], c: 510, p: 13, cb: 80, fe: 15, mg: 10, note: 'High carbs + sodium. Vegetable-forward so some micronutrient value. Better pre-training than post.' },
+
+    // ── PANERA BREAD ──
+    { k: ['panera broccoli cheddar soup','broccoli cheddar'], c: 360, p: 13, cb: 31, fe: 10, mg: 10, note: 'Broccoli = folate + vitamin C. Cheese = calcium. Creamy but not empty — decent for a rest day.' },
+    { k: ['panera chicken noodle soup'], c: 110, p: 8, cb: 14, fe: 6, mg: 4, note: 'Light and easy to digest. Perfect during menstrual phase when digestion slows. Pair with a whole grain item.' },
+    { k: ['panera greek salad'], c: 400, p: 12, cb: 26, fe: 12, mg: 12, note: 'Olives + feta + greens. Good fat and micronutrient profile. Add chicken for protein.' },
+    { k: ['panera turkey sandwich','panera turkey avocado'], c: 560, p: 33, cb: 54, fe: 18, mg: 12, note: 'Solid protein + healthy fat from avocado. One of the better Panera sandwich picks.' },
+    { k: ['panera caesar salad','caesar salad'], c: 480, p: 22, cb: 28, fe: 14, mg: 10, note: 'Romaine + chicken + parmesan. Watch the dressing — it carries most of the calories.' },
+
+    // ── STARBUCKS ──
+    { k: ['starbucks egg bites','egg white bites'], c: 170, p: 13, cb: 13, fe: 6, mg: 6, note: 'Egg white + cottage cheese. High protein for something this small. Great grab-and-go breakfast.' },
+    { k: ['starbucks protein box','starbucks bistro box'], c: 470, p: 25, cb: 47, fe: 12, mg: 10, note: 'Hard egg + cheese + fruit + crackers. Balanced macro split. Best food option at Starbucks.' },
+    { k: ['starbucks oatmeal','starbucks oat'], c: 160, p: 5, cb: 28, fe: 15, mg: 10, note: 'Steel-cut oats = slow carb + iron. Good breakfast base. Add nut butter from your bag for protein.' },
+    { k: ['vanilla latte','starbucks vanilla latte'], c: 250, p: 11, cb: 35, fe: 0, mg: 10, note: 'Milk provides calcium + protein. Sugar from syrup. Get one less pump to cut 20g sugar.' },
+    { k: ['caramel macchiato'], c: 250, p: 10, cb: 33, fe: 0, mg: 8, note: 'Similar to vanilla latte. Milk = calcium. One daily is fine; avoid close to iron-rich meals.' },
+    { k: ['starbucks pink drink','pink drink'], c: 140, p: 2, cb: 27, fe: 1, mg: 2, note: 'Coconut milk + fruit. Hydrating and light. No nutritional alarm bells but no real benefits either.' },
+
+    // ── JERSEY MIKE'S ──
+    { k: ["jersey mike's turkey","jersey mikes turkey"], c: 530, p: 32, cb: 58, fe: 20, mg: 10, note: 'Regular size. Good protein on a real sub roll. Better choice than Subway for protein density.' },
+    { k: ["jersey mike's roast beef","jersey mikes roast beef"], c: 610, p: 37, cb: 54, fe: 30, mg: 12, note: 'Roast beef = excellent heme iron. One of the best iron hits you can get at a sandwich chain.' },
+    { k: ["jersey mike's tuna","jersey mikes tuna"], c: 710, p: 34, cb: 54, fe: 12, mg: 12, note: 'Full-size tuna is calorie-dense from mayo. Mini or half is plenty. Omega-3 benefit from the tuna.' },
+
+    // ── POPEYES ──
+    { k: ["popeyes chicken sandwich","popeyes"], c: 700, p: 28, cb: 69, fe: 16, mg: 10, note: 'The famous sandwich. High calorie. Protein is there but so is the fat and sodium. Enjoy it on a training day.' },
+    { k: ["popeyes tender","popeyes strips"], c: 420, p: 26, cb: 28, fe: 10, mg: 6, note: 'Better protein-to-calorie ratio than the sandwich. Skip the biscuit to keep it reasonable.' },
+    { k: ["popeyes red beans and rice"], c: 230, p: 7, cb: 31, fe: 12, mg: 12, note: 'Plant-based iron + fiber. Decent side. Adds micronutrient value to a fried meal.' },
+
+    // ── DOMINO'S / PIZZA ──
+    { k: ["dominos pizza","pizza slice","cheese pizza"], c: 290, p: 12, cb: 37, fe: 10, mg: 8, note: '2 slices = a real meal. Cheese = calcium. Choose thin crust to cut carbs. Add vegetables as toppings.' },
+    { k: ["pepperoni pizza","dominos pepperoni"], c: 320, p: 13, cb: 36, fe: 10, mg: 8, note: 'Pepperoni adds sodium and fat. Iron content from the meat. Fine as part of a balanced day.' },
+    { k: ["veggie pizza","garden pizza"], c: 260, p: 11, cb: 35, fe: 10, mg: 10, note: 'More micronutrients from the vegetables. Same base calories as cheese. Better choice if ordering pizza.' },
+
+    // ── WHOLE FOODS & GROCERY STAPLES (USDA data) ──
+    { k: ['whole grain pasta','pasta'], c: 220, p: 8, cb: 43, fe: 10, mg: 10, note: 'Complex carb base. Whole grain version adds fiber and B vitamins. Classic follicular phase fuel.' },
+    { k: ['white rice','jasmine rice','basmati'], c: 206, p: 4, cb: 45, fe: 2, mg: 5, note: 'Fast carb. Easy on digestion. Good pre-competition or pre-workout when stomach is sensitive.' },
+    { k: ['brown rice'], c: 216, p: 5, cb: 45, fe: 4, mg: 11, note: 'Slower carb + more magnesium than white. Better for blood sugar stability in luteal phase.' },
+    { k: ['sweet potato','yam'], c: 103, p: 2, cb: 24, fe: 4, mg: 7, note: 'Beta-carotene + potassium + B6. Ideal complex carb for female athletes in any phase.' },
+    { k: ['whole egg','eggs','fried egg'], c: 78, p: 6, cb: 0, fe: 5, mg: 3, note: 'Choline + complete protein + vitamin D. Two eggs = 12g protein. One of the best foods available.' },
+    { k: ['canned tuna','tuna can'], c: 109, p: 25, cb: 0, fe: 10, mg: 8, note: 'Cheapest high-quality protein available. Omega-3s. Easy to add to anything.' },
+    { k: ['canned salmon','canned fish'], c: 130, p: 22, cb: 0, fe: 8, mg: 10, note: 'Omega-3s + vitamin D + calcium (from bones). Follicular and ovulatory phase superfood.' },
+    { k: ['cottage cheese'], c: 110, p: 14, cb: 4, fe: 1, mg: 5, note: 'Casein protein = slow-release overnight. Good pre-sleep protein option in any phase.' },
+    { k: ['tofu','firm tofu'], c: 144, p: 17, cb: 3, fe: 30, mg: 12, note: 'Excellent plant-based iron + complete protein. Best non-meat iron source. Pair with vitamin C.' },
+    { k: ['tempeh'], c: 193, p: 20, cb: 8, fe: 15, mg: 15, note: 'Fermented soy = probiotics + iron + complete protein. Better bioavailability than regular tofu.' },
+    { k: ['black beans','kidney beans','pinto beans'], c: 227, p: 15, cb: 41, fe: 20, mg: 20, note: 'Iron + fiber + magnesium. Cook with cast iron and serve with vitamin C to maximize iron absorption.' },
+    { k: ['chickpeas','garbanzo'], c: 269, p: 15, cb: 45, fe: 26, mg: 15, note: 'Folate + iron + protein. One of the best plant-based foods for women of reproductive age.' },
+    { k: ['whole milk','full fat milk'], c: 149, p: 8, cb: 12, fe: 1, mg: 5, note: 'Calcium + protein + fat-soluble vitamins. Full fat is fine — the fat helps absorb vitamin D.' },
+    { k: ['oat milk'], c: 120, p: 3, cb: 16, fe: 10, mg: 4, note: 'Fortified with calcium and iron. Lower protein than dairy. Check label for added sugar.' },
+    { k: ['almond milk'], c: 40, p: 1, cb: 2, fe: 4, mg: 5, note: 'Very low calorie but also very low protein. Good for cooking. Not a protein source.' },
+    { k: ['frozen yogurt sticks','chobani flip','yogurt parfait'], c: 200, p: 12, cb: 28, fe: 2, mg: 6, note: 'Protein + probiotics. Good pre/post snack.' },
   ]);
 
   // Non-judgmental feedback tone function
