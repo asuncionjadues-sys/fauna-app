@@ -2668,22 +2668,35 @@
   }
 
   function updateHomePhaseCard() {
-    var ph = currentPhase;
-    var el = document.querySelector('.home-phase-header h2') || document.querySelector('[data-i18n="phase_follicular"]');
-    if (el) el.textContent = PHASE_LABELS[ph] + ' Phase';
-    var sub = document.querySelector('[data-i18n="home_day_sub"]');
-    if (sub) sub.textContent = 'Day ' + currentCycleDay + ' of ' + currentCycleLen + ' · ' + (currentCycleDay <= 5 ? 'Rest phase' : currentCycleDay <= 13 ? 'Rising energy' : currentCycleDay <= 17 ? 'Peak phase' : 'Wind-down');
-    var badge = document.querySelector('[data-i18n="home_badge_follicular"]');
-    if (badge) badge.textContent = PHASE_BADGES[ph];
+    var hasData = !!localStorage.getItem('fauna_cycleStart');
+    var ph = hasData ? currentPhase : null;
     var header = document.querySelector('.home-header');
     if (header) {
-      var gradients = {
-        menstrual:  'linear-gradient(135deg, #8B2020 0%, #C0392B 100%)',
-        follicular: 'linear-gradient(135deg, #2D5016 0%, #4a7c28 50%, #E8762B 100%)',
-        ovulatory:  'linear-gradient(135deg, #8B6914 0%, #D4AF37 100%)',
-        luteal:     'linear-gradient(135deg, #1a2f0a 0%, #2D5016 100%)'
-      };
-      header.style.background = gradients[ph];
+      var gradients = { menstrual: 'linear-gradient(135deg, #8B2020 0%, #C0392B 100%)', follicular: 'linear-gradient(135deg, #2D5016 0%, #4a7c28 50%, #E8762B 100%)', ovulatory: 'linear-gradient(135deg, #8B6914 0%, #D4AF37 100%)', luteal: 'linear-gradient(135deg, #1a2f0a 0%, #2D5016 100%)' };
+      header.style.background = hasData ? gradients[ph] : 'linear-gradient(135deg, #2D5016 0%, #3D5A20 100%)';
+    }
+    var el = document.querySelector('[data-i18n="phase_follicular"]') || document.querySelector('.home-phase-header h2');
+    if (el) el.textContent = hasData ? PHASE_LABELS[ph] + ' Phase' : 'Your Cycle';
+    var sub = document.querySelector('[data-i18n="home_day_sub"]');
+    if (sub) sub.textContent = hasData ? 'Day ' + currentCycleDay + ' of ' + currentCycleLen + ' \u00b7 ' + (currentCycleDay <= 5 ? 'Rest phase' : currentCycleDay <= 13 ? 'Rising energy' : currentCycleDay <= 17 ? 'Peak phase' : 'Wind-down') : 'Log your period to get started';
+    var badge = document.querySelector('[data-i18n="home_badge_follicular"]');
+    if (badge) badge.textContent = hasData ? PHASE_BADGES[ph] : 'Tap Settings \u2192 Update Period Date';
+    var wheelDay = document.getElementById('phase-wheel-day');
+    if (wheelDay) wheelDay.textContent = hasData ? currentCycleDay : '--';
+    var wheelArc = document.getElementById('phase-wheel-arc');
+    if (wheelArc) {
+      if (hasData) {
+        var circumference = 175.9;
+        var arcLen = Math.round((currentCycleDay / currentCycleLen) * circumference);
+        var gap = Math.round(circumference - arcLen);
+        var colors = { menstrual: '#C0392B', follicular: '#E8762B', ovulatory: '#D4AF37', luteal: '#8FBC44' };
+        wheelArc.setAttribute('stroke', colors[ph] || '#E8762B');
+        wheelArc.setAttribute('stroke-dasharray', arcLen + ' ' + gap);
+        wheelArc.setAttribute('stroke-opacity', '1');
+      } else {
+        wheelArc.setAttribute('stroke-dasharray', '0 175.9');
+        wheelArc.setAttribute('stroke-opacity', '0.2');
+      }
     }
   }
 
@@ -2832,33 +2845,28 @@
   }
 
   function renderHomeScreen() {
-    var phase = currentPhase;
+    var hasData = !!localStorage.getItem('fauna_cycleStart');
+    var phase = hasData ? currentPhase : null;
     var day   = currentCycleDay;
     var len   = currentCycleLen;
 
-    // 1. SVG wheel — update day number and arc length
-    var wheelDay = document.getElementById('phase-wheel-day');
-    if (wheelDay) wheelDay.textContent = day;
-    var wheelArc = document.getElementById('phase-wheel-arc');
-    if (wheelArc) {
-      var circumference = 2 * Math.PI * 28; // r=28 → 175.9
-      var progress = day / len;
-      var arcLen = Math.round(progress * circumference);
-      var gap = Math.round(circumference - arcLen);
-      var colors = { menstrual: '#C0392B', follicular: '#E8762B', ovulatory: '#D4AF37', luteal: '#8FBC44' };
-      wheelArc.setAttribute('stroke', colors[phase] || '#E8762B');
-      wheelArc.setAttribute('stroke-dasharray', arcLen + ' ' + gap);
-    }
+    // 1. SVG wheel — handled by updateHomePhaseCard (called separately)
 
     // 2. Energy score
-    var score = computeEnergyScore();
-    var tier  = getEnergyTier(score);
     var scoreEl = document.getElementById('home-energy-score');
     var fillEl  = document.getElementById('home-energy-fill');
     var subEl   = document.getElementById('home-energy-sub');
-    if (scoreEl) scoreEl.textContent = score;
-    if (fillEl)  fillEl.style.width = score + '%';
-    if (subEl)   subEl.textContent = getEnergyLabel(score, phase);
+    if (!hasData) {
+      if (scoreEl) scoreEl.textContent = '--';
+      if (fillEl)  fillEl.style.width = '0%';
+      if (subEl)   subEl.textContent = 'Log your cycle to see your energy score';
+    } else {
+      var score = computeEnergyScore();
+      var tier  = getEnergyTier(score);
+      if (scoreEl) scoreEl.textContent = score;
+      if (fillEl)  fillEl.style.width = score + '%';
+      if (subEl)   subEl.textContent = getEnergyLabel(score, phase);
+    }
 
     // 3. Guidance cards — phase + energy tier aware
     var g = GUIDANCE_DATA[phase];
@@ -2896,6 +2904,15 @@
       if (ti) ti.textContent = data.title;
       if (bo) bo.textContent = fillDay(data.body);
     };
+    if (!hasData) {
+      setCard('guidance-train-icon', 'guidance-train-title', 'guidance-train-body',
+        { icon: '\ud83d\uddd3', title: 'Set your cycle', body: 'Go to Settings then Update Period Date to unlock personalized training guidance.' });
+      setCard('guidance-eat-icon', 'guidance-eat-title', 'guidance-eat-body',
+        { icon: '\U0001f331', title: 'Phase nutrition', body: 'Once you log your period date, this shows exactly what to eat for your current phase.' });
+      setCard('guidance-recover-icon', 'guidance-recover-title', 'guidance-recover-body',
+        { icon: '\U0001f4a4', title: 'Recovery guidance', body: 'Your recovery needs shift with your cycle. Log your period date and Fauna guides you day by day.' });
+      return;
+    }
     setCard('guidance-train-icon',   'guidance-train-title',   'guidance-train-body',   train);
     setCard('guidance-eat-icon',     'guidance-eat-title',     'guidance-eat-body',     eat);
     setCard('guidance-recover-icon', 'guidance-recover-title', 'guidance-recover-body', recover);
@@ -2913,21 +2930,29 @@
   seedWearableIfEmpty();
 
   function updateCycleScreen() {
-    var ph = currentPhase;
+    var hasData = !!localStorage.getItem('fauna_cycleStart');
+    var ph = hasData ? currentPhase : null;
     var sub = document.querySelector('[data-i18n="cycle_sub"]');
-    if (sub) sub.textContent = currentCycleLen + '-day cycle · Currently Day ' + currentCycleDay;
+    if (sub) sub.textContent = hasData ? currentCycleLen + '-day cycle · Currently Day ' + currentCycleDay : 'Go to Settings to set your period date';
+    var phaseNameMap = { phase_menstrual: 'Menstrual', phase_follicular: 'Follicular', phase_ovulatory: 'Ovulatory', phase_luteal: 'Luteal' };
     document.querySelectorAll('.phase-card').forEach(function(card) {
-      card.style.opacity = '0.75';
-      card.style.transform = 'scale(0.98)';
-      card.style.boxShadow = '';
       var h3 = card.querySelector('h3');
-      if (h3) {
-        var key = h3.getAttribute('data-i18n') || '';
-        if (key === 'phase_' + ph || key === 'phase_' + ph + '_here') {
-          card.style.opacity = '1';
-          card.style.transform = 'scale(1.02)';
-          card.style.boxShadow = '0 6px 24px rgba(0,0,0,0.18)';
-        }
+      if (!h3) return;
+      var key = h3.getAttribute('data-i18n') || '';
+      var baseKey = key.replace('_here', '');
+      var cleanName = phaseNameMap[baseKey] || h3.textContent.replace(' ← You are here', '');
+      if (hasData && ph && (key === 'phase_' + ph || key === 'phase_' + ph + '_here')) {
+        h3.textContent = cleanName + ' ← You are here';
+        h3.setAttribute('data-i18n', 'phase_' + ph + '_here');
+        card.style.opacity = '1';
+        card.style.transform = 'scale(1.02)';
+        card.style.boxShadow = '0 6px 24px rgba(0,0,0,0.18)';
+      } else {
+        h3.textContent = cleanName;
+        h3.setAttribute('data-i18n', baseKey);
+        card.style.opacity = hasData ? '0.75' : '1';
+        card.style.transform = hasData ? 'scale(0.98)' : 'scale(1)';
+        card.style.boxShadow = '';
       }
     });
   }
