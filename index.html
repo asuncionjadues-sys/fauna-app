@@ -1987,32 +1987,32 @@
     </div>
     <div class="insights-body">
 
-      <!-- Wearable data banner (shows when connected) -->
+      <!-- Wearable data banner -->
       <div class="wearable-banner" id="wearable-banner">
         <div class="wearable-row">
           <div class="wearable-stat">
-            <div class="wearable-val" style="color:var(--amber)">62</div>
+            <div class="wearable-val" style="color:var(--amber)" id="wb-battery">--</div>
             <div class="wearable-label" data-i18n="wb_battery">Body Battery</div>
           </div>
           <div class="wearable-divider"></div>
           <div class="wearable-stat">
-            <div class="wearable-val" style="color:var(--green-light)">71ms</div>
+            <div class="wearable-val" style="color:var(--green-light)" id="wb-hrv">--</div>
             <div class="wearable-label" data-i18n="wb_hrv">HRV</div>
           </div>
           <div class="wearable-divider"></div>
           <div class="wearable-stat">
-            <div class="wearable-val" style="color:var(--gold)">7h 20m</div>
+            <div class="wearable-val" style="color:var(--gold)" id="wb-sleep">--</div>
             <div class="wearable-label" data-i18n="wb_sleep">Sleep</div>
           </div>
           <div class="wearable-divider"></div>
           <div class="wearable-stat">
-            <div class="wearable-val" style="color:var(--green-deep)">24</div>
+            <div class="wearable-val" style="color:var(--green-deep)" id="wb-stress">--</div>
             <div class="wearable-label" data-i18n="wb_stress">Stress</div>
           </div>
         </div>
-        <button onclick="openConnect('garmin')" style="width:100%;margin-top:12px;padding:10px;background:transparent;border:1.5px solid rgba(255,255,255,0.3);color:white;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;touch-action:manipulation">⌚ Update today's stats</button>
-        <div class="wearable-source">⌚ Garmin · synced 8min ago</div>
-      <div id="level-badge" style="margin-top:8px;font-size:11px;color:rgba(255,255,255,0.6);text-align:right"></div>
+        <button onclick="openConnect('garmin')" style="width:100%;margin-top:12px;padding:10px;background:transparent;border:1.5px solid rgba(255,255,255,0.3);color:white;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;touch-action:manipulation">&#8987; Update today's stats</button>
+        <div class="wearable-source" id="wearable-source-label">No stats logged yet &mdash; tap to add</div>
+        <div id="level-badge" style="margin-top:8px;font-size:11px;color:rgba(255,255,255,0.6);text-align:right"></div>
       </div>
 
       <!-- Phase intelligence card -->
@@ -2045,12 +2045,12 @@
     </div>
     <div class="ai-body">
 
-      <!-- Phase nudge -->
-      <div class="ai-nudge">
-        <div class="ai-nudge-icon">⚡</div>
+      <!-- Phase nudge — live from renderNutritionNudge() -->
+      <div class="ai-nudge" id="nutrition-screen-nudge">
+        <div class="ai-nudge-icon" id="nutrition-nudge-icon">&#9889;</div>
         <div>
-          <h4>Follicular Phase · Day 8</h4>
-          <p>Your body absorbs iron best right now. Add a vitamin C source to every meal with iron. Complex carbs are your friend this week — your insulin sensitivity is at its peak.</p>
+          <h4 id="nutrition-nudge-title">Loading...</h4>
+          <p id="nutrition-nudge-body">Checking your log data...</p>
         </div>
       </div>
 
@@ -2135,34 +2135,16 @@
         </div>
       </div>
 
-      <!-- Smart nudges -->
-      <div style="font-size:13px;font-weight:700;color:var(--text-light);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:10px">👋 Today's reminders</div>
-
-      <div class="ai-nudge" style="border-left-color:var(--green-deep)">
-        <div class="ai-nudge-icon">🥩</div>
-        <div>
-          <h4>Iron is low</h4>
-          <p>You are at 22% of your daily iron target. Red meat, lentils, or dark leafy greens at dinner would help — and add lemon juice to the plate.</p>
+      <!-- Live reminders — populated by renderNutritionNudge() -->
+      <div style="font-size:13px;font-weight:700;color:var(--text-light);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:10px">&#128075; Today's reminders</div>
+      <div id="nutrition-reminders-container">
+        <div class="ai-nudge" style="border-left-color:var(--green-deep)">
+          <div class="ai-nudge-icon">&#128221;</div>
+          <div><h4>Log a meal to see your gaps</h4><p>Type what you ate and tap Analyze. Fauna checks your iron, protein, magnesium, and phase-specific needs in real time.</p></div>
         </div>
       </div>
-
-      <div class="ai-nudge" style="border-left-color:#9B59B6">
-        <div class="ai-nudge-icon">🌿</div>
-        <div>
-          <h4>Magnesium check</h4>
-          <p>You have not logged a magnesium source today. A handful of pumpkin seeds or some dark chocolate (70%+) would cover your needs.</p>
-        </div>
-      </div>
-
-      <div class="ai-nudge" style="border-left-color:var(--gold)">
-        <div class="ai-nudge-icon">💧</div>
-        <div>
-          <h4>Hydration</h4>
-          <p>Electrolytes matter more than just water. If you are training today, add sodium + potassium — a pinch of salt to water or coconut water works.</p>
-        </div>
-      </div>
-
       <div style="height:20px"></div>
+
     </div>
   </div>
 
@@ -2665,6 +2647,8 @@
     currentCycleLen = _cycleState.cycleLen;
     updateHomePhaseCard();
     if (typeof renderInsights === 'function') renderInsights();
+    if (id === 'screen-ai' && typeof renderNutritionNudge === 'function') renderNutritionNudge();
+    if (id === 'screen-insights' && typeof renderInsights === 'function') renderInsights();
     updateCycleScreen();
     if (typeof renderHomeScreen === 'function') renderHomeScreen();
   }
@@ -3165,42 +3149,298 @@
     },
   };
 
-  function renderInsights() {
-    const phase = currentPhase;
-    const tier = currentTier;
-    const intel = phaseIntel[phase];
-    const signal = tierSignals[tier][phase];
-    const nutr = nutritionInsights[phase];
-    const recov = recoveryInsights[tier][phase];
+  // ── LIVE INSIGHTS ENGINE ──
+  // Reads: today's log (energy, symptoms, mood, training) + wearable + cycle phase + meal totals
 
-    document.getElementById('phase-intel').style.background = intel.bg;
-    document.getElementById('phase-intel').innerHTML = `
-      <h2>${intel.headline}</h2>
-      <p>${intel.body}</p>
-      <div class="intel-tags">${intel.tags.map(t=>`<span class="intel-tag">${t}</span>`).join('')}</div>
-    `;
-
-    document.getElementById('signal-card').innerHTML = `
-      <h3>📡 Today's signal</h3>
-      <p>${signal}</p>
-    `;
-
-    document.getElementById('nutrition-insight').innerHTML = `
-      <h3>${nutr.icon} ${nutr.title}</h3>
-      <p>${nutr.body}</p>
-      <div class="tag-row">${nutr.tags.map(t=>`<span class="tag">${t}</span>`).join('')}</div>
-    `;
-
-    document.getElementById('recovery-insight').innerHTML = `
-      <h3>${recov.icon} ${recov.title}</h3>
-      <p>${recov.body}</p>
-    `;
+  function getTodayLog() {
+    var allLogs = JSON.parse(localStorage.getItem('fauna_logs') || '[]');
+    var todayKey = (function() {
+      var d = new Date(); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+    })();
+    return allLogs.find(function(l){ return l.date === todayKey; }) || null;
   }
 
-  // Init insights on load
-  if (!currentTier) currentTier = 'active';
-  updateLevelUI();
-  renderInsights();
+  function getWearable() {
+    return JSON.parse(localStorage.getItem('fauna_wearable') || '{}');
+  }
+
+  function buildSignal(phase, tier, log, w) {
+    var energy    = log ? parseInt(log.energy) : null;
+    var symptoms  = log ? (log.symptoms || []) : [];
+    var trained   = log ? log.trained : null;
+    var hrv       = w.hrv         ? parseInt(w.hrv)          : null;
+    var battery   = w.bodyBattery ? parseInt(w.bodyBattery)  : null;
+    var sleep     = w.sleep       ? parseFloat(w.sleep)      : null;
+    var stress    = w.stress      ? parseInt(w.stress)       : null;
+    var hasFatigue   = symptoms.some(function(s){ return /fatigu/i.test(s); });
+    var hasCramps    = symptoms.some(function(s){ return /cramp/i.test(s); });
+    var hasBloom     = symptoms.some(function(s){ return /bloat/i.test(s); });
+    var hasLowMood   = symptoms.some(function(s){ return /mood|anxiety/i.test(s); });
+    var hasEnergized = symptoms.some(function(s){ return /energized/i.test(s); });
+    var lines = [];
+
+    if (energy !== null) {
+      if (energy >= 8) lines.push('Your energy is at ' + energy + '/10 today — high-output work is on the table.');
+      else if (energy >= 6) lines.push('Energy at ' + energy + '/10. Solid baseline — a focused session will feel rewarding.');
+      else if (energy >= 4) lines.push('Energy at ' + energy + '/10. Your body is running lower than usual. Train smart, not hard today.');
+      else lines.push('Energy at ' + energy + '/10 — that is your body asking for restoration, not a harder push.');
+    }
+    if (hrv !== null) {
+      if (hrv >= 70) lines.push('HRV at ' + hrv + 'ms — your nervous system is recovered and ready to adapt.');
+      else if (hrv >= 50) lines.push('HRV at ' + hrv + 'ms. Moderate recovery. One quality session today, then prioritize sleep tonight.');
+      else lines.push('HRV at ' + hrv + 'ms — your system is under load. Reduce intensity and add an extra 30min of sleep.');
+    }
+    if (battery !== null) {
+      if (battery >= 75) lines.push('Body Battery at ' + battery + ' — green light to go hard.');
+      else if (battery >= 50) lines.push('Body Battery at ' + battery + '. Moderate reserves. Conserve for your main session.');
+      else lines.push('Body Battery at ' + battery + '. Low reserves — protect your session window and skip extras.');
+    }
+    if (sleep !== null) {
+      if (sleep >= 8) lines.push('You got ' + sleep + 'h of sleep. Adaptation is happening.');
+      else if (sleep >= 7) lines.push('Sleep at ' + sleep + 'h. Add 30min tonight if you can — muscles finish repairing at 8h.');
+      else lines.push('Only ' + sleep + 'h of sleep. Prioritize an earlier bedtime tonight. Performance degrades measurably under 7h.');
+    }
+    if (hasFatigue && phase === 'menstrual') lines.push('Fatigue logged + menstrual phase: your iron may be depleted. A small red meat or lentil portion with vitamin C today will help significantly.');
+    if (hasCramps) lines.push('Cramps logged: ginger tea (proven cramp reducer), a heating pad, and magnesium-rich foods. Do not push through heavy cramps.');
+    if (hasBloom)  lines.push('Bloating logged: cut sodium and processed foods today. Potassium-rich foods (banana, avocado) counteract water retention.');
+    if (hasLowMood) lines.push('Mood dip noted. B6-rich foods (chicken, banana) and omega-3s (salmon, walnuts) directly support serotonin. A 20-min walk in daylight also helps measurably.');
+    if (hasEnergized) lines.push('You logged feeling energized — leverage that. This is a great moment for a quality session.');
+    if (trained === 'yes') lines.push('You logged a training session today. Prioritize protein and carbs in your next meal to lock in the adaptation.');
+
+    if (lines.length === 0) {
+      var base = {
+        follicular: 'Estrogen is rising. Your body is in its building window — log your energy and symptoms to get a personalized signal.',
+        ovulatory:  'Peak hormone window. Log your energy today and Fauna will tell you exactly how to use it.',
+        luteal:     'Progesterone is rising and your metabolism is elevated. Log how you feel and Fauna adjusts your guidance.',
+        menstrual:  'Your body is working hard this phase. Log your symptoms and Fauna will guide you through it day by day.'
+      };
+      lines.push(base[phase] || 'Log your energy and symptoms daily to unlock personalized insights.');
+    }
+    return lines;
+  }
+
+  function buildNutritionInsight(phase, log, w, mealTotals) {
+    var symptoms  = log ? (log.symptoms || []) : [];
+    var hasCramps  = symptoms.some(function(s){ return /cramp/i.test(s); });
+    var hasBloom   = symptoms.some(function(s){ return /bloat/i.test(s); });
+    var hasLowMood = symptoms.some(function(s){ return /mood|anxiety/i.test(s); });
+    var hasFatigue = symptoms.some(function(s){ return /fatigu/i.test(s); });
+    var ironPct    = mealTotals ? Math.min(100, Math.round(mealTotals.iron    / 100 * 100)) : null;
+    var proteinG   = mealTotals ? mealTotals.protein : null;
+    var cals       = mealTotals ? mealTotals.cals    : null;
+
+    var phaseTitles = { follicular: 'Fuel for building', ovulatory: 'Fuel for peak output', luteal: 'Fuel for more', menstrual: 'Replenish first' };
+    var phaseIcons  = { follicular: '\ud83c\udf3e', ovulatory: '\u26a1\ufe0f', luteal: '\ud83c\udf6b', menstrual: '\ud83e\udd69' };
+    var title = phaseTitles[phase] || 'Nutrition';
+    var points = [], tags = [];
+
+    if (ironPct !== null && ironPct < 25 && (phase === 'menstrual' || phase === 'follicular')) {
+      points.push('Iron at ' + ironPct + '% for the day. Add lentils, red meat, or sardines at your next meal. Squeeze lemon on top — vitamin C triples absorption.');
+      tags.push('Iron needed');
+    } else if (phase === 'menstrual') {
+      points.push('You are losing iron this phase. Prioritize red meat, lentils, or spinach with a vitamin C source at each meal.');
+      tags.push('Iron priority');
+    }
+    if (proteinG !== null && proteinG < 60) {
+      points.push('Protein at ' + proteinG + 'g so far. Aim for 30-40g per main meal. Chicken, Greek yogurt, eggs, or cottage cheese are fast options.');
+      tags.push('Protein needed');
+    } else if (proteinG === null) {
+      points.push('Log your meals to see if you are hitting your protein target. Athletes need 1.6-2g per kg of bodyweight.');
+    }
+    if (hasBloom) { points.push('Bloating noted: reduce sodium. Potassium (avocado, banana) and ginger tea help within a few hours.'); tags.push('Anti-bloat foods'); }
+    if (hasCramps) { points.push('Cramps: omega-3s (salmon, flaxseed, walnuts) reduce prostaglandins. Ginger tea is fastest-acting.'); tags.push('Omega-3s'); }
+    if (hasLowMood) { points.push('Low mood: B6 (chicken, banana, chickpeas) supports serotonin. Magnesium (pumpkin seeds, dark chocolate) reduces cortisol.'); tags.push('B6 + Magnesium'); }
+    if (hasFatigue && phase === 'luteal') { points.push('Luteal fatigue often means underfueled. Eat more complex carbs — sweet potato, oats, quinoa — to stabilize energy.'); tags.push('Complex carbs'); }
+    if (phase === 'luteal' && !hasCramps && !hasBloom) { points.push('Metabolism is elevated — eat 100-300 more calories than usual. Complex carbs prevent cravings. Magnesium reduces PMS.'); tags.push('Magnesium'); }
+    if (phase === 'ovulatory') { points.push('Anti-inflammatory foods amplify your peak: zinc (red meat, oysters), vitamin C (berries, citrus). Avoid fried foods.'); tags.push('Zinc + Vitamin C'); }
+    if (phase === 'follicular' && points.length < 2) { points.push('Insulin sensitivity is high — complex carbs + lean protein + iron-rich foods is the right formula this week.'); tags.push('Complex carbs'); }
+    if (cals !== null && cals > 0) {
+      var calTarget = phase === 'luteal' ? 2400 : 2200;
+      var pct = Math.round(cals / calTarget * 100);
+      if (pct < 40) points.push(cals + ' cal logged so far (' + pct + '%). Do not under-eat — it spikes cortisol and degrades recovery.');
+    }
+    if (points.length === 0) { points.push('Log your meals on the Nutrition screen to get guidance based on what you are actually eating.'); tags.push('Log meals'); }
+
+    return { icon: phaseIcons[phase] || '\ud83c\udf3e', title: title, body: points.join(' '), tags: tags };
+  }
+
+  function buildRecoveryInsight(phase, tier, log, w) {
+    var symptoms  = log ? (log.symptoms || []) : [];
+    var trained   = log ? log.trained : null;
+    var hrv       = w.hrv         ? parseInt(w.hrv)          : null;
+    var sleep     = w.sleep       ? parseFloat(w.sleep)      : null;
+    var stress    = w.stress      ? parseInt(w.stress)       : null;
+    var hasCramps  = symptoms.some(function(s){ return /cramp/i.test(s); });
+    var hasFatigue = symptoms.some(function(s){ return /fatigu/i.test(s); });
+    var hasLowMood = symptoms.some(function(s){ return /mood|anxiety/i.test(s); });
+    var icon, title, points = [];
+
+    if (sleep !== null) {
+      if (sleep < 7) { icon = '\ud83d\udca4'; title = 'Sleep is your #1 priority'; points.push('You got ' + sleep + 'h. At under 7h, cortisol rises, performance drops, recovery stalls. Aim for 8h tonight — set a hard bedtime alarm.'); }
+      else if (sleep < 8) { icon = '\ud83d\ude34'; title = 'Sleep is good — push to 8h'; points.push(sleep + 'h is solid. 30 more minutes tonight would noticeably improve next-day performance.'); }
+      else { icon = '\u2728'; title = 'Sleep locked in'; points.push(sleep + 'h — muscle adaptation, hormonal regulation, immune function. Keep the routine.'); }
+    } else if (phase === 'menstrual') {
+      icon = '\ud83c\udf21\ufe0f'; title = 'Heat over ice this phase';
+      points.push('Heat therapy (hot shower, heating pad) reduces prostaglandins more than ice this phase. Aim for 8h sleep — your body is working hard.');
+    } else if (phase === 'luteal') {
+      icon = '\ud83d\udec1'; title = 'Sleep is recovery this phase';
+      points.push('Progesterone disrupts sleep quality. Wind down early: screens off 30min before bed, magnesium supplement, cooler room temp. Every extra 30min counts.');
+    } else {
+      icon = '\ud83d\ude34'; title = 'Recovery window';
+      points.push(phase === 'follicular' ? 'Follicular phase means faster muscle repair. You can train consecutive days — but sleep 7-8h or you lose the adaptation benefit.' : 'Peak phase. Recovery fuels the next performance. Sleep 7-8h minimum.');
+    }
+    if (hrv !== null && hrv < 50) points.push('HRV at ' + hrv + 'ms signals accumulated stress. Lower intensity, more sleep, hydrate well. Skip double sessions today.');
+    if (stress !== null && stress > 65) points.push('High stress score (' + stress + '). Box breathing (4-7-8) for 5min before sleep lowers cortisol. Avoid screens and caffeine after 2pm.');
+    if (trained === 'yes') points.push('You trained today. Protein within 30-45min post-session, carbs to replenish glycogen, and 7h sleep tonight for the adaptation to lock in.');
+    if (hasCramps) points.push('For cramps: magnesium (300-400mg) before sleep, heating pad on lower back/abdomen, gentle hip-opener stretches.');
+    if (hasFatigue && phase !== 'menstrual') points.push('Fatigue today: check if you are eating enough. Under-fueling is the #1 cause of persistent fatigue in female athletes.');
+    if (hasLowMood) points.push('Mood support: 20min daylight exposure, gentle movement, consistent sleep time — measurable improvement within 48-72h.');
+    if (points.length === 0) {
+      var defaults = { follicular: 'Recovery is faster this phase. Stack training days if needed — but sleep 7-8h to lock in the gains.', ovulatory: 'Post-session: cold exposure (cold shower) amplifies recovery at peak hormone levels. Protein within 30min.', luteal: 'Add 10-15min of active recovery after sessions this phase. An Epsom salt bath helps.', menstrual: 'Gentle movement — yoga, walking — reduces cramp severity through circulation. Rest is valid today.' };
+      points.push(defaults[phase] || 'Log your sleep and symptoms to get personalized recovery guidance.');
+    }
+    return { icon: icon || '\ud83d\ude34', title: title || 'Recovery', body: points.join(' ') };
+  }
+
+  function getMealTotals() {
+    return { cals: totalCals, protein: totalProtein, iron: totalIron, mg: totalMg };
+  }
+
+  function renderInsights() {
+    var phase = currentPhase;
+    var tier  = currentTier;
+    var log   = getTodayLog();
+    var w     = getWearable();
+    var meals = getMealTotals();
+    var intel = phaseIntel[phase];
+
+    var phaseEl = document.getElementById('phase-intel');
+    if (phaseEl) {
+      phaseEl.style.background = intel.bg;
+      phaseEl.innerHTML = '<h2>' + intel.headline + '</h2><p>' + intel.body + '</p><div class="intel-tags">' + intel.tags.map(function(t){ return '<span class="intel-tag">' + t + '</span>'; }).join('') + '</div>';
+    }
+
+    var signalLines = buildSignal(phase, tier, log, w);
+    var signalEl = document.getElementById('signal-card');
+    if (signalEl) {
+      var hasRealData = log || w.hrv || w.sleep || w.bodyBattery;
+      signalEl.innerHTML = '<h3>\ud83d\udce1 Today\'s signal' + (hasRealData ? '' : ' <span style="font-size:11px;font-weight:400;color:var(--text-light)">(log your day to personalize)</span>') + '</h3>' +
+        signalLines.map(function(l){ return '<p style="margin-bottom:8px">' + l + '</p>'; }).join('');
+    }
+
+    var nutr = buildNutritionInsight(phase, log, w, meals.cals > 0 ? meals : null);
+    var nutrEl = document.getElementById('nutrition-insight');
+    if (nutrEl) {
+      nutrEl.innerHTML = '<h3>' + nutr.icon + ' ' + nutr.title + '</h3><p>' + nutr.body + '</p>' +
+        (nutr.tags.length ? '<div class="tag-row">' + nutr.tags.map(function(t){ return '<span class="tag">' + t + '</span>'; }).join('') + '</div>' : '');
+    }
+
+    var recov = buildRecoveryInsight(phase, tier, log, w);
+    var recovEl = document.getElementById('recovery-insight');
+    if (recovEl) { recovEl.innerHTML = '<h3>' + recov.icon + ' ' + recov.title + '</h3><p>' + recov.body + '</p>'; }
+
+    var label = document.getElementById('insights-phase-label');
+    if (label) {
+      var hasData = !!localStorage.getItem('fauna_cycleStart');
+      var phaseNames = { follicular: 'Follicular', ovulatory: 'Ovulatory', luteal: 'Luteal', menstrual: 'Menstrual' };
+      label.textContent = hasData ? (phaseNames[phase] + ' Phase \u00b7 Day ' + currentCycleDay) : 'Log your cycle to unlock insights';
+    }
+
+    var srcLabel = document.getElementById('wearable-source-label');
+    if (srcLabel) {
+      if (w.lastSync) {
+        var minsAgo = Math.round((Date.now() - w.lastSync) / 60000);
+        var timeStr = minsAgo < 60 ? minsAgo + 'min ago' : Math.round(minsAgo/60) + 'h ago';
+        srcLabel.textContent = '\u231a ' + (w.source === 'apple' ? 'Apple Health' : 'Garmin') + ' \u00b7 synced ' + timeStr;
+      } else {
+        srcLabel.textContent = '\u231a No stats logged yet \u2014 tap to add';
+      }
+    }
+  }
+
+  // ── NUTRITION SCREEN LIVE NUDGE ──
+  function renderNutritionNudge() {
+    var phase    = currentPhase;
+    var log      = getTodayLog();
+    var w        = getWearable();
+    var symptoms = log ? (log.symptoms || []) : [];
+    var trained  = log ? log.trained : null;
+    var hasCramps  = symptoms.some(function(s){ return /cramp/i.test(s); });
+    var hasBloom   = symptoms.some(function(s){ return /bloat/i.test(s); });
+    var hasLowMood = symptoms.some(function(s){ return /mood|anxiety/i.test(s); });
+    var hasFatigue = symptoms.some(function(s){ return /fatigu/i.test(s); });
+    var sleep = w.sleep ? parseFloat(w.sleep) : null;
+    var icon, title, body;
+
+    if (hasCramps && phase === 'menstrual') {
+      icon = '\ud83c\udf75'; title = 'Menstrual Phase \u00b7 Cramps logged';
+      body = 'Ginger tea is clinically proven to reduce cramp intensity. Omega-3s (salmon, walnuts, flaxseed) reduce prostaglandins. Iron-rich foods today: red meat, lentils, spinach with lemon.';
+    } else if (hasLowMood) {
+      icon = '\ud83e\ude77'; title = 'Mood support today';
+      body = 'B6 (chicken, banana, chickpeas) directly supports serotonin production. Magnesium (pumpkin seeds, dark chocolate 70%+) reduces cortisol. Omega-3s support brain function.';
+    } else if (hasBloom) {
+      icon = '\ud83e\udd2b'; title = 'Bloating logged \u2014 eat to counteract';
+      body = 'Cut sodium and processed foods today. Potassium (avocado, banana, sweet potato) counteracts water retention. Ginger and peppermint tea reduce GI inflammation.';
+    } else if (phase === 'luteal') {
+      icon = '\ud83c\udf6b'; title = 'Luteal Phase \u00b7 Day ' + currentCycleDay;
+      body = 'Metabolism is elevated — eat 100-300 more calories than usual. Complex carbs (sweet potato, oats, quinoa) prevent cravings before they hit. Magnesium (pumpkin seeds, dark chocolate) reduces PMS.';
+    } else if (phase === 'menstrual') {
+      icon = '\ud83e\udd69'; title = 'Menstrual Phase \u00b7 Day ' + currentCycleDay;
+      body = 'You are losing iron. Replenish aggressively: red meat, lentils, spinach, sardines — all with a vitamin C source (lemon, OJ, berries). Warm, easy-to-digest foods. Ginger tea for cramps.';
+    } else if (phase === 'ovulatory') {
+      icon = '\u26a1\ufe0f'; title = 'Ovulatory Phase \u00b7 Peak window';
+      body = 'Anti-inflammatory foods amplify your hormonal peak: zinc (red meat, oysters, pumpkin seeds), vitamin C (citrus, berries, bell peppers), omega-3s. Avoid fried and ultra-processed foods today.';
+    } else {
+      icon = '\ud83c\udf3e'; title = 'Follicular Phase \u00b7 Day ' + currentCycleDay;
+      body = 'Insulin sensitivity is at its peak — your body processes carbs efficiently. Complex carbs + lean protein + iron-rich foods. Ideal time for heavier fueling if you are training.';
+    }
+
+    var nudgeIcon  = document.getElementById('nutrition-nudge-icon');
+    var nudgeTitle = document.getElementById('nutrition-nudge-title');
+    var nudgeBody  = document.getElementById('nutrition-nudge-body');
+    if (nudgeIcon)  nudgeIcon.textContent  = icon;
+    if (nudgeTitle) nudgeTitle.textContent = title;
+    if (nudgeBody)  nudgeBody.textContent  = body;
+
+    var container = document.getElementById('nutrition-reminders-container');
+    if (!container) return;
+    var reminders = [];
+    var ironPct  = Math.min(100, Math.round(totalIron    / 100 * 100));
+    var protPct  = Math.min(100, Math.round(totalProtein / 140 * 100));
+    var mgPct    = Math.min(100, Math.round(totalMg      / 100 * 100));
+
+    if (totalCals > 0) {
+      if (ironPct < 30 && (phase === 'menstrual' || phase === 'follicular')) {
+        reminders.push({ color: '#C0392B', icon: '\ud83e\udd69', title: 'Iron at ' + ironPct + '% \u2014 add an iron source', body: 'Red meat, lentils, spinach, or sardines at your next meal. Always pair with vitamin C \u2014 it triples absorption. Coffee blocks iron absorption for 1h after.' });
+      }
+      if (protPct < 40) {
+        reminders.push({ color: 'var(--green-deep)', icon: '\ud83d\udcaa', title: 'Protein at ' + protPct + '% of daily goal', body: 'Aim for 30-40g per main meal. Chicken, eggs, Greek yogurt, cottage cheese, or lentils are the fastest ways to catch up.' });
+      }
+      if (mgPct < 20 && (phase === 'luteal' || phase === 'menstrual')) {
+        reminders.push({ color: '#9B59B6', icon: '\ud83e\udd69', title: 'No magnesium source logged', body: 'A handful of pumpkin seeds or 2 squares of dark chocolate (70%+) covers most of your daily magnesium. Critical this phase for cramps and mood.' });
+      }
+    } else {
+      if (phase === 'menstrual' || phase === 'luteal') {
+        reminders.push({ color: '#C0392B', icon: '\ud83e\udd69', title: 'Track your iron intake', body: 'Log your meals to see if you are hitting your iron target. This phase, you need it most.' });
+      }
+      reminders.push({ color: 'var(--green-deep)', icon: '\ud83d\udcdd', title: 'Log a meal to see your gaps', body: 'Type what you ate and tap Analyze. Fauna checks your iron, protein, magnesium, and phase-specific needs in real time.' });
+    }
+
+    var hydrationMsg = trained === 'yes'
+      ? 'You trained today \u2014 electrolytes matter. Add sodium + potassium: a pinch of salt in water, coconut water, or a banana. Aim for 2.5-3L total today.'
+      : 'Aim for 2-2.5L of water today. Electrolytes (sodium, potassium) matter as much as volume, especially around training.';
+    reminders.push({ color: 'var(--gold)', icon: '\ud83d\udca7', title: 'Hydration', body: hydrationMsg });
+
+    if (sleep !== null && sleep < 7) {
+      reminders.push({ color: '#5A8A8A', icon: '\ud83d\udca4', title: 'Sleep impacts nutrient absorption', body: 'Under 7h sleep increases cortisol and insulin resistance \u2014 your body absorbs nutrients less efficiently. Tonight: aim for 8h.' });
+    }
+
+    container.innerHTML = reminders.map(function(r) {
+      return '<div class="ai-nudge" style="border-left-color:' + r.color + ';margin-bottom:10px"><div class="ai-nudge-icon">' + r.icon + '</div><div><h4>' + r.title + '</h4><p>' + r.body + '</p></div></div>';
+    }).join('');
+  }
+
+
 
   // ── ENTRY TAB SWITCHING ──
   var currentEntryType = 'meal';
@@ -3369,6 +3609,9 @@
         <div class="progress-label"><span>Iron</span><span>${ironPct}%</span></div>
         <div class="progress-bar"><div class="progress-fill" style="width:${ironPct}%;background:#C0392B"></div></div>
       `;
+
+      // Refresh live nudges with new totals
+      if (typeof renderNutritionNudge === 'function') renderNutritionNudge();
 
       // Build result card
       var entryTypeLabel = currentEntryType === 'snack' ? 'Snack' : currentEntryType === 'drink' ? 'Drink' : 'Meal';
