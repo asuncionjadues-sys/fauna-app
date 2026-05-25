@@ -2219,7 +2219,7 @@
         </div>
       </div>
 
-      <button class="save-btn" onclick="showToast()" data-i18n="log_save" data-i18n="log_save">Save Today's Log</button>
+      <button class="save-btn" onclick="saveCurrentLog()" data-i18n="log_save">Save Today's Log</button>
 
         <!-- Meal History -->
         <div style="margin-top:24px">
@@ -3665,41 +3665,72 @@
     renderWeekSummary();
   }
 
-  // Patch saveCurrentLog to persist to fauna_logs
-  var _origSaveCurrentLog;
+  function saveCurrentLog(offsetOverride) {
+    var offset = (offsetOverride !== undefined) ? offsetOverride : logOffset;
+    var sliderEl = document.getElementById('energy-slider');
+    var notesEl  = document.getElementById('log-notes');
+    var energy   = sliderEl ? parseInt(sliderEl.value) : 7;
+    var mood     = document.querySelector('.mood-btn.selected') ? document.querySelector('.mood-btn.selected').textContent.trim() : '';
+    var symptoms = Array.from(document.querySelectorAll('.symptom-btn.selected')).map(function(b) { return b.textContent.trim(); });
+    var trained  = document.querySelector('.train-btn.selected') ? document.querySelector('.train-btn.selected').textContent.includes('Yes') : false;
+    var notes    = notesEl ? notesEl.value : '';
 
-  function saveCurrentLog() {
-    logHistory[logOffset] = {
-      energy: document.getElementById('energy-slider') ? document.getElementById('energy-slider').value : 7,
-      symptoms: Array.from(document.querySelectorAll('.symptom-btn.selected')).map(function(b) { return b.textContent.trim(); }),
-      mood: document.querySelector('.mood-btn.selected') ? document.querySelector('.mood-btn.selected').textContent : '',
-      trained: document.querySelector('.train-btn.selected') ? document.querySelector('.train-btn.selected').textContent.includes('Yes') : true,
-    };
+    var entry = { energy: energy, mood: mood, symptoms: symptoms, trained: trained, notes: notes };
+    logHistory[offset] = entry;
+
+    // Persist to localStorage keyed by date
+    var key = getDateKey(offset);
+    var allLogs = JSON.parse(localStorage.getItem('fauna_logs') || '[]');
+    var idx = allLogs.findIndex(function(l) { return l.date === key; });
+    var persisted = Object.assign({ date: key, phase: currentPhase }, entry);
+    if (idx >= 0) { allLogs[idx] = persisted; } else { allLogs.push(persisted); }
+    if (allLogs.length > 365) allLogs = allLogs.slice(-365);
+    localStorage.setItem('fauna_logs', JSON.stringify(allLogs));
+
+    // Update home screen energy score with new log data
+    if (typeof renderHomeScreen === 'function') renderHomeScreen();
+    if (typeof renderWeekSummary === 'function') renderWeekSummary();
+
+    // Toast confirmation
+    var t = document.getElementById('toast');
+    var phaseLabel = (typeof PHASE_LABELS !== 'undefined') ? PHASE_LABELS[currentPhase] : currentPhase;
+    t.textContent = '\u2713 Logged ' + (offset === 0 ? 'today' : 'this day') + ' · ' + phaseLabel + ' day ' + (typeof currentCycleDay !== 'undefined' ? currentCycleDay : '');
+    t.classList.add('show');
+    setTimeout(function() { t.classList.remove('show'); }, 2800);
   }
 
   function loadLogForDay(offset) {
     var saved = logHistory[offset];
-    // Reset UI
+    if (!saved) {
+      var key2 = getDateKey(offset);
+      var allLogs2 = JSON.parse(localStorage.getItem('fauna_logs') || '[]');
+      var found2 = allLogs2.find(function(l) { return l.date === key2; });
+      if (found2) { saved = found2; logHistory[offset] = found2; }
+    }
     var slider = document.getElementById('energy-slider');
     if (!slider) return;
-    if (saved) {
-      slider.value = saved.energy;
-      document.getElementById('energy-val').textContent = saved.energy;
-      document.querySelectorAll('.symptom-btn').forEach(function(b) {
-        b.classList.toggle('selected', saved.symptoms.includes(b.textContent.trim()));
-      });
-      document.querySelectorAll('.mood-btn').forEach(function(b) {
-        b.classList.toggle('selected', b.textContent === saved.mood);
-      });
-    } else {
-      slider.value = 7;
-      document.getElementById('energy-val').textContent = 7;
-      document.querySelectorAll('.symptom-btn').forEach(function(b) { b.classList.remove('selected'); });
-      document.querySelectorAll('.mood-btn').forEach(function(b) { b.classList.remove('selected'); });
-    }
-    // Past days: show saved indicator
+    var energyVal = document.getElementById('energy-val');
+    var notesEl   = document.getElementById('log-notes');
+    var energy = saved ? (parseInt(saved.energy) || 7) : 7;
+    slider.value = energy;
+    if (energyVal) energyVal.textContent = energy;
+    slider.style.background = 'linear-gradient(90deg, var(--green-deep) ' + energy*10 + '%, var(--cream-dark) ' + energy*10 + '%)';
+    document.querySelectorAll('.symptom-btn').forEach(function(b) {
+      b.classList.toggle('selected', !!(saved && saved.symptoms && saved.symptoms.some(function(s){ return b.textContent.trim().indexOf(s.replace(/^\S+\s*/,'').split(' ')[0]) > -1; })));
+    });
+    document.querySelectorAll('.mood-btn').forEach(function(b) {
+      b.classList.toggle('selected', !!(saved && saved.mood && b.textContent.trim() === saved.mood.trim()));
+    });
+    document.querySelectorAll('.train-btn').forEach(function(b) {
+      if (saved && saved.trained !== undefined) {
+        b.classList.toggle('selected', saved.trained ? b.textContent.includes('Yes') : b.textContent.includes('Rest'));
+      }
+    });
+    if (notesEl) notesEl.value = (saved && saved.notes) ? saved.notes : '';
     var saveBtn = document.querySelector('.save-btn');
-    if (saveBtn) saveBtn.textContent = offset < 0 && saved ? '✓ Already logged' : 'Save Today\'s Log';
+    if (saveBtn) {
+      saveBtn.textContent = saved ? ('\u2713 Saved' + (offset === 0 ? ' \u2014 tap to update' : '')) : (offset === 0 ? "Save Today's Log" : 'Log this day');
+    }
   }
 
   // ── PERFORMANCE LEVEL TOGGLE ──
