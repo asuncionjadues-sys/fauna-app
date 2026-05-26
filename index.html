@@ -1608,18 +1608,6 @@
 <!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
-<script>
-  var _fbConfig = {
-    apiKey: "AIzaSyDsf6idh-PCtKNwh-ny5qVnVsN1URZISU0",
-    authDomain: "fauna-app-50c35.firebaseapp.com",
-    projectId: "fauna-app-50c35",
-    storageBucket: "fauna-app-50c35.firebasestorage.app",
-    messagingSenderId: "856513845492",
-    appId: "1:856513845492:web:e84764ff62a866331926a1"
-  };
-  if (!firebase.apps.length) firebase.initializeApp(_fbConfig);
-  var fbAuth = firebase.auth();
-</script>
 </head>
 <body>
 
@@ -2712,6 +2700,23 @@
   </div>
 
 <script>
+  // ── FIREBASE INIT ──
+  var fbAuth;
+  (function() {
+    var _fbConfig = {
+      apiKey: "AIzaSyDsf6idh-PCtKNwh-ny5qVnVsN1URZISU0",
+      authDomain: "fauna-app-50c35.firebaseapp.com",
+      projectId: "fauna-app-50c35",
+      storageBucket: "fauna-app-50c35.firebasestorage.app",
+      messagingSenderId: "856513845492",
+      appId: "1:856513845492:web:e84764ff62a866331926a1"
+    };
+    try {
+      if (!firebase.apps.length) firebase.initializeApp(_fbConfig);
+      fbAuth = firebase.auth();
+    } catch(e) { console.error('Firebase init failed:', e); }
+  })();
+
   // ── CYCLE ENGINE ──
   var cycleEngine = (function() {
     var PHASE_DEFS = [
