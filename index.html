@@ -517,8 +517,8 @@
   }
 
   .cycle-wheel-svg {
-    width: 220px;
-    height: 220px;
+    width: 280px;
+    height: 280px;
   }
 
   .phase-details {
@@ -542,32 +542,33 @@
   }
 
   .phase-detail-card:active { transform: scale(0.98); }
-  .phase-detail-card.current { border-left-color: var(--amber); background: #FFF8F3; }
+  .phase-detail-card.current { background: #FFF8F0; box-shadow: 0 3px 12px rgba(0,0,0,0.08); }
 
-  .phase-dot {
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    flex-shrink: 0;
+  .phase-detail-left {
+    flex: 1;
+    min-width: 0;
   }
 
-  .phase-detail-text h3 {
-    font-size: 14px;
-    font-weight: 600;
+  .phase-detail-left h3 {
+    font-size: 15px;
+    font-weight: 700;
+    font-family: 'DM Serif Display', Georgia, serif;
     color: var(--text-dark);
-    margin-bottom: 2px;
+    margin-bottom: 3px;
   }
 
-  .phase-detail-text p {
+  .phase-detail-left p {
     font-size: 12px;
-    color: var(--text-light);
+    color: #888;
   }
 
-  .phase-days {
-    margin-left: auto;
-    font-size: 11px;
-    color: var(--text-light);
-    font-weight: 500;
+  .phase-detail-icons {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    font-size: 18px;
+    flex-shrink: 0;
   }
 
   /* ===== INSIGHTS SCREEN ===== */
@@ -1764,83 +1765,98 @@
     </div>
 
     <div class="cycle-wheel-container">
-      <svg class="cycle-wheel-svg" viewBox="0 0 220 220">
-        <!-- Background -->
-        <circle cx="110" cy="110" r="100" fill="#F5F0E8"/>
+      <svg id="cycle-wheel-svg" class="cycle-wheel-svg" viewBox="0 0 320 320">
+        <!-- Tick marks (28 days) -->
+        <line x1="160.00" y1="52.00" x2="160.00" y2="44.00" stroke="#BBBBBB" stroke-width="1.5"/>
+        <line x1="184.03" y1="54.71" x2="185.81" y2="46.91" stroke="#BBBBBB" stroke-width="1"/>
+        <line x1="206.86" y1="62.70" x2="210.33" y2="55.49" stroke="#BBBBBB" stroke-width="1"/>
+        <line x1="227.34" y1="75.56" x2="232.32" y2="69.31" stroke="#BBBBBB" stroke-width="1"/>
+        <line x1="244.44" y1="92.66" x2="250.69" y2="87.68" stroke="#BBBBBB" stroke-width="1.5"/>
+        <line x1="257.30" y1="113.14" x2="264.51" y2="109.67" stroke="#BBBBBB" stroke-width="1"/>
+        <line x1="265.29" y1="135.97" x2="273.09" y2="134.19" stroke="#BBBBBB" stroke-width="1"/>
+        <line x1="268.00" y1="160.00" x2="276.00" y2="160.00" stroke="#BBBBBB" stroke-width="1"/>
+        <line x1="265.29" y1="184.03" x2="273.09" y2="185.81" stroke="#BBBBBB" stroke-width="1"/>
+        <line x1="257.30" y1="206.86" x2="264.51" y2="210.33" stroke="#BBBBBB" stroke-width="1.5"/>
+        <line x1="244.44" y1="227.34" x2="250.69" y2="232.32" stroke="#BBBBBB" stroke-width="1"/>
+        <line x1="227.34" y1="244.44" x2="232.32" y2="250.69" stroke="#BBBBBB" stroke-width="1"/>
+        <line x1="206.86" y1="257.30" x2="210.33" y2="264.51" stroke="#BBBBBB" stroke-width="1"/>
+        <line x1="184.03" y1="265.29" x2="185.81" y2="273.09" stroke="#BBBBBB" stroke-width="1"/>
+        <line x1="160.00" y1="268.00" x2="160.00" y2="276.00" stroke="#BBBBBB" stroke-width="1.5"/>
+        <line x1="135.97" y1="265.29" x2="134.19" y2="273.09" stroke="#BBBBBB" stroke-width="1"/>
+        <line x1="113.14" y1="257.30" x2="109.67" y2="264.51" stroke="#BBBBBB" stroke-width="1"/>
+        <line x1="92.66" y1="244.44" x2="87.68" y2="250.69" stroke="#BBBBBB" stroke-width="1"/>
+        <line x1="75.56" y1="227.34" x2="69.31" y2="232.32" stroke="#BBBBBB" stroke-width="1"/>
+        <line x1="62.70" y1="206.86" x2="55.49" y2="210.33" stroke="#BBBBBB" stroke-width="1.5"/>
+        <line x1="54.71" y1="184.03" x2="46.91" y2="185.81" stroke="#BBBBBB" stroke-width="1"/>
+        <line x1="52.00" y1="160.00" x2="44.00" y2="160.00" stroke="#BBBBBB" stroke-width="1"/>
+        <line x1="54.71" y1="135.97" x2="46.91" y2="134.19" stroke="#BBBBBB" stroke-width="1"/>
+        <line x1="62.70" y1="113.14" x2="55.49" y2="109.67" stroke="#BBBBBB" stroke-width="1"/>
+        <line x1="75.56" y1="92.66" x2="69.31" y2="87.68" stroke="#BBBBBB" stroke-width="1.5"/>
+        <line x1="92.66" y1="75.56" x2="87.68" y2="69.31" stroke="#BBBBBB" stroke-width="1"/>
+        <line x1="113.14" y1="62.70" x2="109.67" y2="55.49" stroke="#BBBBBB" stroke-width="1"/>
+        <line x1="135.97" y1="54.71" x2="134.19" y2="46.91" stroke="#BBBBBB" stroke-width="1"/>
 
-        <!-- Menstrual: days 1-5 (red, ~65°) -->
-        <path d="M110 110 L110 10 A100 100 0 0 1 182 37 Z" fill="#C0392B" opacity="0.85"/>
-        <!-- Follicular: days 6-13 (amber, ~103°) current -->
-        <path d="M110 110 L182 37 A100 100 0 0 1 206 152 Z" fill="#E8762B" opacity="0.9"/>
-        <!-- Ovulatory: days 14-17 (gold, ~51°) -->
-        <path d="M110 110 L206 152 A100 100 0 0 1 152 206 Z" fill="#D4AF37" opacity="0.9"/>
-        <!-- Luteal: days 18-28 (green, ~140°) -->
-        <path d="M110 110 L152 206 A100 100 0 1 1 110 10 Z" fill="#2D5016" opacity="0.85"/>
+        <!-- Day number labels at key positions -->
+        <text x="160.0" y="32.0" text-anchor="middle" dominant-baseline="middle" fill="#888" font-size="9" font-family="Inter">1</text>
+        <text x="268.5" y="68.8" text-anchor="middle" dominant-baseline="middle" fill="#888" font-size="9" font-family="Inter">5</text>
+        <text x="284.6" y="218.6" text-anchor="middle" dominant-baseline="middle" fill="#888" font-size="9" font-family="Inter">10</text>
+        <text x="160.0" y="299.0" text-anchor="middle" dominant-baseline="middle" fill="#888" font-size="9" font-family="Inter">15</text>
+        <text x="35.4" y="218.6" text-anchor="middle" dominant-baseline="middle" fill="#888" font-size="9" font-family="Inter">20</text>
+        <text x="51.5" y="68.8" text-anchor="middle" dominant-baseline="middle" fill="#888" font-size="9" font-family="Inter">25</text>
 
-        <!-- Center circle -->
-        <circle cx="110" cy="110" r="52" fill="#F5F0E8"/>
-        <circle cx="110" cy="110" r="50" fill="white"/>
+        <!-- Phase arcs (thick rounded strokes) -->
+        <!-- Menstrual: days 1-5 -->
+        <path d="M 162.356 70.031 A 90 90 0 0 1 240.037 118.841" stroke="#C0392B" stroke-width="13" stroke-linecap="round" fill="none"/>
+        <!-- Follicular: days 6-13 -->
+        <path d="M 242.082 123.086 A 90 90 0 0 1 182.317 247.189" stroke="#D4AF37" stroke-width="13" stroke-linecap="round" fill="none"/>
+        <!-- Ovulatory: days 14-17 -->
+        <path d="M 177.723 248.238 A 90 90 0 0 1 105.747 231.810" stroke="#E8762B" stroke-width="13" stroke-linecap="round" fill="none"/>
+        <!-- Luteal: days 18-28 -->
+        <path d="M 102.063 228.872 A 90 90 0 1 1 157.644 70.031" stroke="#2D5016" stroke-width="13" stroke-linecap="round" fill="none"/>
 
-        <!-- Labels -->
-        <text x="130" y="35" text-anchor="middle" fill="white" font-size="9" font-weight="700" font-family="Inter">MENS</text>
-        <text x="175" y="100" text-anchor="middle" fill="white" font-size="9" font-weight="700" font-family="Inter">FOLL</text>
-        <text x="167" y="178" text-anchor="middle" fill="white" font-size="9" font-weight="700" font-family="Inter">OVU</text>
-        <text x="55" y="155" text-anchor="middle" fill="white" font-size="9" font-weight="700" font-family="Inter">LUTEAL</text>
+        <!-- Phase labels outside wheel -->
+        <text x="224.9" y="56.7" text-anchor="middle" dominant-baseline="middle" fill="#C0392B" font-size="9" font-weight="600" font-family="Inter">Menstrual</text>
+        <text x="269.9" y="212.9" text-anchor="middle" dominant-baseline="middle" fill="#D4AF37" font-size="9" font-weight="600" font-family="Inter" transform="rotate(90 269.9 212.9)">Follicular</text>
+        <text x="132.9" y="278.9" text-anchor="middle" dominant-baseline="middle" fill="#E8762B" font-size="9" font-weight="600" font-family="Inter">Ovulatory</text>
+        <text x="44.8" y="119.7" text-anchor="middle" dominant-baseline="middle" fill="#2D5016" font-size="9" font-weight="600" font-family="Inter" transform="rotate(-90 44.8 119.7)">Luteal</text>
 
-        <!-- Current day marker -->
-        <circle cx="182" cy="62" r="8" fill="white" stroke="#E8762B" stroke-width="2.5"/>
-        <text x="182" y="66" text-anchor="middle" fill="#E8762B" font-size="8" font-weight="800" font-family="Inter">8</text>
+        <!-- Current day marker (dynamic, updated by JS) -->
+        <circle id="cycle-day-marker" cx="250.0" cy="160.0" r="7" fill="white" stroke="#D4AF37" stroke-width="2.5"/>
 
         <!-- Center text -->
-        <text x="110" y="104" text-anchor="middle" fill="#2D5016" font-size="11" font-weight="700" font-family="Inter">Follicular</text>
-        <text x="110" y="120" text-anchor="middle" fill="#7A7A7A" font-size="10" font-family="Inter">Day 8</text>
+        <text id="cycle-center-phase" x="160" y="153" text-anchor="middle" dominant-baseline="middle" fill="#2D5016" font-size="16" font-family="DM Serif Display, Georgia, serif">Follicular</text>
+        <text id="cycle-center-day" x="160" y="172" text-anchor="middle" dominant-baseline="middle" fill="#1a1a1a" font-size="22" font-weight="700" font-family="Inter, sans-serif">Day 8</text>
       </svg>
     </div>
 
     <div class="phase-details">
-      <div class="phase-detail-card" onclick="openPhaseModal('menstrual')">
-        <div class="phase-dot" style="background:#C0392B"></div>
-        <div class="phase-detail-text">
-          <h3 data-i18n="phase_menstrual">Menstrual</h3>
+      <div class="phase-detail-card" data-phase="menstrual" style="border-left:5px solid #C0392B" onclick="openPhaseModal('menstrual')">
+        <div class="phase-detail-left">
+          <h3 data-i18n="phase_menstrual">Menstrual Phase</h3>
           <p data-i18n="phase_menstrual_tag">Rest, replenish, reflect</p>
         </div>
-        <div style="display:flex;align-items:center;gap:6px">
-          <div class="phase-days">Days 1–5</div>
-          <div style="font-size:16px;color:var(--text-light)">›</div>
-        </div>
+        <div class="phase-detail-icons">🔋😐</div>
       </div>
-      <div class="phase-detail-card current" onclick="openPhaseModal('follicular')">
-        <div class="phase-dot" style="background:#E8762B"></div>
-        <div class="phase-detail-text">
-          <h3 data-i18n="phase_follicular_here">Follicular ← You are here</h3>
-          <p data-i18n="phase_follicular_tag">Energy builds. Great time to train hard.</p>
+      <div class="phase-detail-card current" data-phase="follicular" style="border-left:5px solid #D4AF37" onclick="openPhaseModal('follicular')">
+        <div class="phase-detail-left">
+          <h3 data-i18n="phase_follicular">Follicular Phase</h3>
+          <p data-i18n="phase_follicular_tag">Energy builds, great time to push</p>
         </div>
-        <div style="display:flex;align-items:center;gap:6px">
-          <div class="phase-days">Days 6–13</div>
-          <div style="font-size:16px;color:var(--amber)">›</div>
-        </div>
+        <div class="phase-detail-icons">☀️😄</div>
       </div>
-      <div class="phase-detail-card" onclick="openPhaseModal('ovulatory')">
-        <div class="phase-dot" style="background:#D4AF37"></div>
-        <div class="phase-detail-text">
-          <h3 data-i18n="phase_ovulatory">Ovulatory</h3>
+      <div class="phase-detail-card" data-phase="ovulatory" style="border-left:5px solid #E8762B" onclick="openPhaseModal('ovulatory')">
+        <div class="phase-detail-left">
+          <h3 data-i18n="phase_ovulatory">Ovulatory Phase</h3>
           <p data-i18n="phase_ovulatory_tag">Peak energy, strength, confidence</p>
         </div>
-        <div style="display:flex;align-items:center;gap:6px">
-          <div class="phase-days">Days 14–17</div>
-          <div style="font-size:16px;color:var(--text-light)">›</div>
-        </div>
+        <div class="phase-detail-icons">✨😊</div>
       </div>
-      <div class="phase-detail-card" onclick="openPhaseModal('luteal')">
-        <div class="phase-dot" style="background:#2D5016"></div>
-        <div class="phase-detail-text">
-          <h3 data-i18n="phase_luteal">Luteal</h3>
+      <div class="phase-detail-card" data-phase="luteal" style="border-left:5px solid #2D5016" onclick="openPhaseModal('luteal')">
+        <div class="phase-detail-left">
+          <h3 data-i18n="phase_luteal">Luteal Phase</h3>
           <p data-i18n="phase_luteal_tag">Slow down, prioritize recovery</p>
         </div>
-        <div style="display:flex;align-items:center;gap:6px">
-          <div class="phase-days">Days 18–28</div>
-          <div style="font-size:16px;color:var(--text-light)">›</div>
-        </div>
+        <div class="phase-detail-icons">🌙😌</div>
       </div>
     </div>
   </div>
@@ -2994,27 +3010,42 @@
     var hasData = !!localStorage.getItem('fauna_cycleStart');
     var ph = hasData ? currentPhase : null;
     var sub = document.querySelector('[data-i18n="cycle_sub"]');
-    if (sub) sub.textContent = hasData ? currentCycleLen + '-day cycle · Currently Day ' + currentCycleDay : 'Go to Settings to set your period date';
-    var phaseNameMap = { phase_menstrual: 'Menstrual', phase_follicular: 'Follicular', phase_ovulatory: 'Ovulatory', phase_luteal: 'Luteal' };
-    document.querySelectorAll('.phase-card').forEach(function(card) {
-      var h3 = card.querySelector('h3');
-      if (!h3) return;
-      var key = h3.getAttribute('data-i18n') || '';
-      var baseKey = key.replace('_here', '');
-      var cleanName = phaseNameMap[baseKey] || h3.textContent.replace(' ← You are here', '');
-      if (hasData && ph && (key === 'phase_' + ph || key === 'phase_' + ph + '_here')) {
-        h3.textContent = cleanName + ' ← You are here';
-        h3.setAttribute('data-i18n', 'phase_' + ph + '_here');
-        card.style.opacity = '1';
-        card.style.transform = 'scale(1.02)';
-        card.style.boxShadow = '0 6px 24px rgba(0,0,0,0.18)';
-      } else {
-        h3.textContent = cleanName;
-        h3.setAttribute('data-i18n', baseKey);
-        card.style.opacity = hasData ? '0.75' : '1';
-        card.style.transform = hasData ? 'scale(0.98)' : 'scale(1)';
-        card.style.boxShadow = '';
+    if (sub) sub.textContent = hasData ? currentCycleLen + '-day cycle \u00b7 Currently Day ' + currentCycleDay : 'Go to Settings to set your period date';
+
+    // Update SVG center text and day marker
+    var centerPhaseEl = document.getElementById('cycle-center-phase');
+    var centerDayEl = document.getElementById('cycle-center-day');
+    var dayMarker = document.getElementById('cycle-day-marker');
+    var phaseColorMap = { menstrual: '#C0392B', follicular: '#D4AF37', ovulatory: '#E8762B', luteal: '#2D5016' };
+    var phaseDisplayMap = { menstrual: 'Menstrual', follicular: 'Follicular', ovulatory: 'Ovulatory', luteal: 'Luteal' };
+    if (hasData && ph) {
+      if (centerPhaseEl) centerPhaseEl.textContent = phaseDisplayMap[ph] || ph;
+      if (centerDayEl) centerDayEl.textContent = 'Day ' + currentCycleDay;
+      if (dayMarker) {
+        var cycleLen = currentCycleLen || 28;
+        var dayDeg = (currentCycleDay - 1) / cycleLen * 360 - 90;
+        var dayRad = dayDeg * Math.PI / 180;
+        var mx = 160 + 90 * Math.cos(dayRad);
+        var my = 160 + 90 * Math.sin(dayRad);
+        dayMarker.setAttribute('cx', mx.toFixed(2));
+        dayMarker.setAttribute('cy', my.toFixed(2));
+        dayMarker.setAttribute('stroke', phaseColorMap[ph] || '#888');
       }
+    } else {
+      if (centerPhaseEl) centerPhaseEl.textContent = 'No Data';
+      if (centerDayEl) centerDayEl.textContent = '';
+    }
+
+    // Update phase detail cards
+    document.querySelectorAll('.phase-detail-card').forEach(function(card) {
+      var cardPhase = card.getAttribute('data-phase');
+      if (hasData && ph && cardPhase === ph) {
+        card.classList.add('current');
+      } else {
+        card.classList.remove('current');
+        card.style.opacity = hasData ? '0.75' : '1';
+      }
+      if (hasData && ph && cardPhase === ph) card.style.opacity = '1';
     });
   }
 
