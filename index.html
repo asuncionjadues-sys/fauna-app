@@ -4297,6 +4297,7 @@
     if (idx >= 0) { allLogs[idx] = persisted; } else { allLogs.push(persisted); }
     if (allLogs.length > 365) allLogs = allLogs.slice(-365);
     localStorage.setItem('fauna_logs', JSON.stringify(allLogs));
+    if (typeof cloudSave === 'function') setTimeout(cloudSave, 300);
 
     // Update home screen energy score with new log data
     if (typeof renderHomeScreen === 'function') renderHomeScreen();
@@ -5948,9 +5949,9 @@
     localStorage.setItem('fauna_user', JSON.stringify(authUser));
     document.getElementById('auth-gate').style.display = 'none';
     updateAuthDrawer();
-    // Load cloud data for this user
+    // Load cloud data for this user, then save local data up
     cloudLoad(user.uid);
-    hookCloudSave();
+    setTimeout(cloudSave, 1500);
     var t = document.getElementById('toast');
     t.textContent = '\u2713 Welcome, ' + authUser.name + '!';
     t.classList.add('show');
