@@ -1605,10 +1605,61 @@
   .lang-option-name { font-size: 14px; font-weight: 600; color: var(--text-dark); }
   .lang-option-check { font-size: 18px; }
 </style>
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 </head>
 <body>
 
 <div class="phone-frame">
+<!-- ===== AUTH GATE ===== -->
+<div id="auth-gate" style="position:absolute;inset:0;background:#F5F0E8;z-index:1000;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 24px;overflow-y:auto">
+  <div style="width:100%;max-width:360px">
+    <div style="text-align:center;margin-bottom:32px">
+      <div style="font-family:'DM Serif Display',Georgia,serif;font-size:36px;color:#2D5016;margin-bottom:6px">f<span style="color:#E8762B">a</span>una</div>
+      <div style="font-size:14px;color:#888;letter-spacing:0.3px">Your cycle. Your performance.</div>
+    </div>
+
+    <!-- Tab toggle -->
+    <div style="display:flex;background:#E8E0D0;border-radius:12px;padding:3px;margin-bottom:20px" id="gate-tab-row">
+      <button id="gate-tab-signup" onclick="gateTab('signup')" style="flex:1;padding:10px;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;background:#2D5016;color:white;transition:all 0.2s">Create account</button>
+      <button id="gate-tab-login" onclick="gateTab('login')" style="flex:1;padding:10px;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;background:transparent;color:#666;transition:all 0.2s">Sign in</button>
+    </div>
+
+    <!-- Name field (signup only) -->
+    <div id="gate-name-wrap" style="margin-bottom:12px">
+      <label style="display:block;font-size:11px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:5px">First name</label>
+      <input id="gate-name" type="text" placeholder="Your name" autocomplete="given-name" style="width:100%;border:1.5px solid #D8D0C0;border-radius:10px;padding:13px 14px;font-size:15px;font-family:inherit;color:#1a1a1a;background:white;outline:none;box-sizing:border-box">
+    </div>
+
+    <div style="margin-bottom:12px">
+      <label style="display:block;font-size:11px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:5px">Email</label>
+      <input id="gate-email" type="email" placeholder="you@email.com" autocomplete="email" style="width:100%;border:1.5px solid #D8D0C0;border-radius:10px;padding:13px 14px;font-size:15px;font-family:inherit;color:#1a1a1a;background:white;outline:none;box-sizing:border-box">
+    </div>
+
+    <div style="margin-bottom:20px">
+      <label style="display:block;font-size:11px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:5px">Password</label>
+      <input id="gate-password" type="password" placeholder="At least 8 characters" autocomplete="current-password" style="width:100%;border:1.5px solid #D8D0C0;border-radius:10px;padding:13px 14px;font-size:15px;font-family:inherit;color:#1a1a1a;background:white;outline:none;box-sizing:border-box">
+    </div>
+
+    <div id="gate-error" style="display:none;background:#FFF0F0;border-radius:8px;padding:10px 12px;font-size:13px;color:#C0392B;margin-bottom:14px"></div>
+
+    <button id="gate-submit-btn" onclick="gateSubmit()" style="width:100%;padding:15px;background:#2D5016;color:white;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:14px">Create account</button>
+
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+      <div style="flex:1;height:1px;background:#D8D0C0"></div>
+      <span style="font-size:12px;color:#888">or</span>
+      <div style="flex:1;height:1px;background:#D8D0C0"></div>
+    </div>
+
+    <button onclick="gateGoogle()" style="width:100%;padding:13px;background:white;color:#1a1a1a;border:1.5px solid #D8D0C0;border-radius:12px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:10px">
+      <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#4285F4" d="M44.5 20H24v8.5h11.7C34.1 33.3 29.6 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3 0 5.7 1.1 7.8 2.9l6.3-6.3C34.4 5.5 29.5 3.5 24 3.5 12.7 3.5 3.5 12.7 3.5 24S12.7 44.5 24 44.5c11 0 20.5-8 20.5-20 0-1.3-.1-2.7-.5-4.5z"/></svg>
+      Continue with Google
+    </button>
+
+    <p style="text-align:center;font-size:11px;color:#aaa;margin-top:20px;line-height:1.6">Your data stays private and is never sold.<br>Delete your account anytime.</p>
+  </div>
+</div>
   <!-- Onboarding overlay (shown first time) -->
   <div class="onboard-overlay" id="onboard-overlay">
     <div class="onboard-modal">
@@ -4615,62 +4666,9 @@
     el.style.display = 'block';
   }
 
-  function submitAuth() {
-    var email = document.getElementById('auth-email').value.trim();
-    var password = document.getElementById('auth-password').value;
-    var name = document.getElementById('auth-name') ? document.getElementById('auth-name').value.trim() : '';
-
-    // Basic validation
-    if (!email || !email.includes('@')) { showAuthError('Enter a valid email address.'); return; }
-    if (password.length < 8) { showAuthError('Password must be at least 8 characters.'); return; }
-    if (authTab === 'signup' && !name) { showAuthError('Enter your first name.'); return; }
-
-    // Simulate auth (in production this hits your backend)
-    var btn = document.getElementById('auth-submit-btn');
-    btn.textContent = authTab === 'signup' ? 'Creating account...' : 'Signing in...';
-    btn.disabled = true;
-
-    setTimeout(function() {
-      // Simulate success
-      authUser = { email: email, name: name || email.split('@')[0] };
-      localStorage.setItem('fauna_user', JSON.stringify(authUser));
-      updateAuthDrawer();
-
-      // Transition to logged-in state
-      document.getElementById('auth-logged-out').style.display = 'none';
-      document.getElementById('auth-logged-in').style.display = 'block';
-      document.getElementById('auth-modal-title').textContent = '✅ Account';
-      document.getElementById('auth-welcome').textContent = 'Hi, ' + authUser.name + '!';
-      document.getElementById('auth-email-display').textContent = authUser.email;
-
-      btn.textContent = authTab === 'signup' ? 'Create account' : 'Sign in';
-      btn.disabled = false;
-
-      var t = document.getElementById('toast');
-      t.textContent = authTab === 'signup' ? '✓ Account created — your data is backed up' : '✓ Signed in';
-      t.classList.add('show');
-      setTimeout(function() { t.classList.remove('show'); t.textContent = 'Logged for today'; }, 3000);
-    }, 1200);
-  }
-
-  function continueWithGoogle() {
-    // In production this triggers Google OAuth
-    var t = document.getElementById('toast');
-    t.textContent = 'Google sign-in coming soon';
-    t.classList.add('show');
-    setTimeout(function() { t.classList.remove('show'); t.textContent = 'Logged for today'; }, 2000);
-  }
-
-  function signOut() {
-    authUser = null;
-    localStorage.removeItem('fauna_user');
-    updateAuthDrawer();
-    closeAuthModal();
-    var t = document.getElementById('toast');
-    t.textContent = 'Signed out';
-    t.classList.add('show');
-    setTimeout(function() { t.classList.remove('show'); t.textContent = 'Logged for today'; }, 1800);
-  }
+  function submitAuth() { /* handled by Firebase gate */ }
+  function continueWithGoogle() { /* handled by Firebase gate */ }
+  function signOut() { /* handled by Firebase gate */ }
 
   // ── CYCLE UPDATE MODAL ──
   var updateCycleLen = parseInt(localStorage.getItem('fauna_cycleLen') || '28');
@@ -5800,6 +5798,122 @@
       inp.value = Math.round(onboardWeightUnit === 'lbs' ? v * 2.20462 : v / 2.20462);
     }
   }
+
+  // ── FIREBASE AUTH ──
+  var firebaseConfig = {
+    apiKey: "AIzaSyDsf6idh-PCtKNwh-ny5qVnVsN1URZISU0",
+    authDomain: "fauna-app-50c35.firebaseapp.com",
+    projectId: "fauna-app-50c35",
+    storageBucket: "fauna-app-50c35.firebasestorage.app",
+    messagingSenderId: "856513845492",
+    appId: "1:856513845492:web:e84764ff62a866331926a1"
+  };
+  firebase.initializeApp(firebaseConfig);
+  var fbAuth = firebase.auth();
+
+  // Gate tab state
+  var gateMode = 'signup';
+  function gateTab(mode) {
+    gateMode = mode;
+    var isSU = mode === 'signup';
+    document.getElementById('gate-tab-signup').style.background = isSU ? '#2D5016' : 'transparent';
+    document.getElementById('gate-tab-signup').style.color = isSU ? 'white' : '#666';
+    document.getElementById('gate-tab-login').style.background = !isSU ? '#2D5016' : 'transparent';
+    document.getElementById('gate-tab-login').style.color = !isSU ? 'white' : '#666';
+    document.getElementById('gate-name-wrap').style.display = isSU ? 'block' : 'none';
+    document.getElementById('gate-submit-btn').textContent = isSU ? 'Create account' : 'Sign in';
+    document.getElementById('gate-error').style.display = 'none';
+  }
+
+  function gateShowError(msg) {
+    var el = document.getElementById('gate-error');
+    el.textContent = msg;
+    el.style.display = 'block';
+  }
+
+  function gateSubmit() {
+    var email = document.getElementById('gate-email').value.trim();
+    var password = document.getElementById('gate-password').value;
+    var name = document.getElementById('gate-name').value.trim();
+    document.getElementById('gate-error').style.display = 'none';
+    if (!email || !email.includes('@')) { gateShowError('Enter a valid email address.'); return; }
+    if (password.length < 6) { gateShowError('Password must be at least 6 characters.'); return; }
+    if (gateMode === 'signup' && !name) { gateShowError('Enter your first name.'); return; }
+    var btn = document.getElementById('gate-submit-btn');
+    btn.textContent = gateMode === 'signup' ? 'Creating account...' : 'Signing in...';
+    btn.disabled = true;
+    if (gateMode === 'signup') {
+      fbAuth.createUserWithEmailAndPassword(email, password)
+        .then(function(cred) {
+          return cred.user.updateProfile({ displayName: name }).then(function() { return cred.user; });
+        })
+        .then(function(user) { onAuthSuccess(user); })
+        .catch(function(err) {
+          btn.textContent = 'Create account'; btn.disabled = false;
+          gateShowError(firebaseErrMsg(err.code));
+        });
+    } else {
+      fbAuth.signInWithEmailAndPassword(email, password)
+        .then(function(cred) { onAuthSuccess(cred.user); })
+        .catch(function(err) {
+          btn.textContent = 'Sign in'; btn.disabled = false;
+          gateShowError(firebaseErrMsg(err.code));
+        });
+    }
+  }
+
+  function gateGoogle() {
+    var provider = new firebase.auth.GoogleAuthProvider();
+    fbAuth.signInWithPopup(provider)
+      .then(function(result) { onAuthSuccess(result.user); })
+      .catch(function(err) { gateShowError(firebaseErrMsg(err.code)); });
+  }
+
+  function onAuthSuccess(user) {
+    authUser = { email: user.email, name: user.displayName || user.email.split('@')[0], uid: user.uid };
+    localStorage.setItem('fauna_user', JSON.stringify(authUser));
+    document.getElementById('auth-gate').style.display = 'none';
+    updateAuthDrawer();
+    var t = document.getElementById('toast');
+    t.textContent = '\u2713 Welcome, ' + authUser.name + '!';
+    t.classList.add('show');
+    setTimeout(function() { t.classList.remove('show'); }, 2500);
+  }
+
+  function firebaseErrMsg(code) {
+    var msgs = {
+      'auth/email-already-in-use': 'An account with this email already exists.',
+      'auth/invalid-email': 'Invalid email address.',
+      'auth/weak-password': 'Password must be at least 6 characters.',
+      'auth/user-not-found': 'No account found with this email.',
+      'auth/wrong-password': 'Incorrect password.',
+      'auth/too-many-requests': 'Too many attempts. Try again later.',
+      'auth/popup-closed-by-user': 'Sign-in cancelled.',
+      'auth/network-request-failed': 'Network error. Check your connection.'
+    };
+    return msgs[code] || 'Something went wrong. Please try again.';
+  }
+
+  // signOut with Firebase
+  function signOut() {
+    fbAuth.signOut().then(function() {
+      authUser = null;
+      localStorage.removeItem('fauna_user');
+      updateAuthDrawer();
+      closeAuthModal();
+      document.getElementById('auth-gate').style.display = 'flex';
+      gateTab('signup');
+    });
+  }
+
+  // Listen for auth state — show/hide gate
+  fbAuth.onAuthStateChanged(function(user) {
+    if (user) {
+      onAuthSuccess(user);
+    } else {
+      document.getElementById('auth-gate').style.display = 'flex';
+    }
+  });
 
 </script>
 </body>
