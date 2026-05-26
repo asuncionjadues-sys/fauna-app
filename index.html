@@ -1658,6 +1658,14 @@
             <button class="cycle-len-btn" onclick="selectCycleLen(35,this)">35</button>
           </div>
           <div style="font-size:11px;color:var(--text-light);margin-top:6px">Average is 28 days. Yours might differ — that is totally normal.</div>
+          <div style="margin-top:14px">
+            <label style="font-size:12px;font-weight:700;color:var(--text-light);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:8px">Your weight <span style="font-weight:400;text-transform:none">(optional)</span></label>
+            <div style="display:flex;gap:8px;align-items:center">
+              <input type="number" id="onboard-weight-input" placeholder="e.g. 60" min="30" max="200" style="flex:1;padding:12px;border:2px solid var(--cream-dark);border-radius:10px;font-size:16px;font-family:inherit;background:white;color:var(--text-dark);outline:none;box-sizing:border-box">
+              <button id="onboard-weight-unit-btn" onclick="toggleOnboardWeightUnit()" style="padding:12px 16px;background:var(--cream-dark);border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;color:var(--text-mid)">kg</button>
+            </div>
+            <div style="font-size:11px;color:var(--text-light);margin-top:5px">Sets your personalized nutrition targets. Never shared.</div>
+          </div>
         </div>
       </div>
       <div id="phase-preview-box" style="display:none;background:linear-gradient(135deg,var(--green-deep),#4a7c28);border-radius:14px;padding:16px;margin-bottom:20px;color:white;text-align:center">
@@ -1708,6 +1716,14 @@
         <div class="energy-bar-wrap">
           <div class="energy-bar"><div class="energy-fill" id="home-energy-fill" style="width:0%"></div></div>
           <div class="energy-sub" id="home-energy-sub">Calculating...</div>
+        </div>
+      </div>
+
+      <div id="next-period-strip" style="display:none;background:rgba(139,26,26,0.08);border-radius:10px;padding:10px 14px;margin-bottom:12px;align-items:center;gap:10px">
+        <span style="font-size:18px">&#129657;</span>
+        <div>
+          <div style="font-size:12px;font-weight:700;color:#8B1A1A" id="next-period-label">Next period in -- days</div>
+          <div style="font-size:11px;color:var(--text-light)" id="next-period-date"></div>
         </div>
       </div>
 
@@ -2218,6 +2234,12 @@
           <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-light);margin-bottom:12px">Past 7 days</div>
           <div id="week-summary" style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px"></div>
         </div>
+
+        <!-- Log history strip -->
+        <div style="padding:0 0 20px">
+          <div style="font-size:12px;font-weight:700;color:var(--text-light);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:10px">Jump to day</div>
+          <div id="log-history-strip" style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch"></div>
+        </div>
     </div>
   </div>
 
@@ -2264,6 +2286,10 @@
     </div>
     <div class="drawer-body">
       <div class="drawer-section-title" data-i18n="drawer_performance">Performance</div>
+      <div class="drawer-item" onclick="openMacroModal()">
+        <div class="drawer-item-left"><span class="drawer-item-icon">👤</span>My Profile</div>
+        <span id="profile-weight-label" style="font-size:12px;color:var(--text-light)">→</span>
+      </div>
       <div class="drawer-item" onclick="openCycleUpdateModal()">
         <div class="drawer-item-left"><span class="drawer-item-icon">🔄</span>Update Period Date</div>
         <span id="cycle-date-drawer-label" style="font-size:11px;color:var(--text-light)">→</span>
@@ -2295,6 +2321,15 @@
       </div>
 
       <div class="drawer-section-title" data-i18n="drawer_preferences">Preferences</div>
+      <div class="drawer-section-title">Data</div>
+      <div class="drawer-item" onclick="exportBackup()">
+        <div class="drawer-item-left"><span class="drawer-item-icon">💾</span>Export &amp; Backup</div>
+        <span style="font-size:12px;color:var(--text-light)">Download →</span>
+      </div>
+      <div class="drawer-item">
+        <div class="drawer-item-left"><span class="drawer-item-icon">📥</span>Import Backup</div>
+        <label style="font-size:12px;color:var(--text-light);cursor:pointer">Upload <input type="file" accept=".json" style="display:none" onchange="importBackup(this)"></label>
+      </div>
       <div class="drawer-item">
         <div class="drawer-item-left"><span class="drawer-item-icon">🔔</span>Notifications</div>
         <div class="drawer-toggle on"></div>
@@ -2324,6 +2359,29 @@
     </div>
   </div>
 </div>
+
+  <!-- Macro Profile modal -->
+  <div class="connect-overlay" id="macro-overlay" onclick="closeMacroModal()"></div>
+  <div class="connect-modal" id="macro-modal">
+    <div style="padding:16px">
+      <h2 style="font-family:'DM Serif Display',Georgia,serif;font-size:20px;margin:0 0 4px">My Profile</h2>
+      <p style="font-size:13px;color:var(--text-light);margin:0 0 16px">Used to calculate your personal nutrition targets.</p>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:14px">
+        <input type="number" id="macro-weight-input" placeholder="e.g. 60" min="30" max="200" style="flex:1;padding:12px;border:2px solid var(--cream-dark);border-radius:10px;font-size:20px;font-weight:700;font-family:inherit;background:var(--cream);color:var(--text-dark);outline:none;box-sizing:border-box" oninput="updateMacroPreview()">
+        <button id="macro-weight-unit-btn" onclick="toggleMacroWeightUnit()" style="padding:12px 18px;background:var(--cream-dark);border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;color:var(--text-mid)">kg</button>
+      </div>
+      <div id="macro-targets-preview" style="display:none;background:var(--cream);border-radius:12px;padding:14px;margin-bottom:16px">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text-light);letter-spacing:0.5px;margin-bottom:10px">Your daily targets</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;text-align:center">
+          <div><div id="preview-cals" style="font-size:18px;font-weight:800;color:var(--green-deep)">--</div><div style="font-size:10px;color:var(--text-light)">Calories</div></div>
+          <div><div id="preview-prot" style="font-size:18px;font-weight:800;color:var(--amber)">--</div><div style="font-size:10px;color:var(--text-light)">Protein (g)</div></div>
+          <div><div id="preview-carbs" style="font-size:18px;font-weight:800;color:#5A8A8A">--</div><div style="font-size:10px;color:var(--text-light)">Carbs (g)</div></div>
+        </div>
+      </div>
+      <button onclick="saveMacroProfile()" style="width:100%;padding:14px;background:var(--green-deep);color:white;border:none;border-radius:14px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit">Save</button>
+      <button onclick="closeMacroModal()" style="width:100%;padding:12px;background:transparent;border:none;color:var(--text-light);font-size:14px;cursor:pointer;font-family:inherit;margin-top:6px">Cancel</button>
+    </div>
+  </div>
 
   <!-- Auth / Email modal -->
   <div class="simple-modal-overlay" id="auth-overlay" onclick="closeAuthModal()"></div>
@@ -2902,6 +2960,22 @@
     setCard('guidance-train-icon',   'guidance-train-title',   'guidance-train-body',   train);
     setCard('guidance-eat-icon',     'guidance-eat-title',     'guidance-eat-body',     eat);
     setCard('guidance-recover-icon', 'guidance-recover-title', 'guidance-recover-body', recover);
+
+    // Cycle prediction strip
+    if (typeof daysUntilNextPeriod === 'function') {
+      var daysLeft = daysUntilNextPeriod();
+      var nStrip = document.getElementById('next-period-strip');
+      var nLabel = document.getElementById('next-period-label');
+      var nDate  = document.getElementById('next-period-date');
+      if (nStrip && daysLeft !== null) {
+        nStrip.style.display = 'flex';
+        var nextD = getNextPeriodDate();
+        var dateStr = nextD ? nextD.toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' }) : '';
+        if (daysLeft <= 0) { nLabel.textContent = 'Period may have started'; nDate.textContent = 'Update your period date in Settings'; }
+        else if (daysLeft <= 3) { nLabel.textContent = 'Period in ' + daysLeft + ' day' + (daysLeft===1?'':'s') + ' \u2014 prepare'; nDate.textContent = dateStr; }
+        else { nLabel.textContent = 'Next period in ' + daysLeft + ' days'; nDate.textContent = dateStr; }
+      } else if (nStrip) { nStrip.style.display = 'none'; }
+    }
   }
 
   // ── WEARABLE DATA LAYER ──
@@ -3015,6 +3089,17 @@
   function finishOnboard() {
     if (!currentTier) { document.getElementById('onboard-overlay').classList.add('hidden'); }
     localStorage.setItem('fauna_level', currentTier || 'active');
+    // Save onboarding weight if provided
+    var wInp = document.getElementById('onboard-weight-input');
+    if (wInp && wInp.value) {
+      var wVal = parseFloat(wInp.value);
+      var wKg = onboardWeightUnit === 'lbs' ? wVal * 0.453592 : wVal;
+      var tier2 = currentTier || 'active';
+      var tgt = calcTargets(wKg, tier2, 'follicular');
+      localStorage.setItem('fauna_macro_profile', JSON.stringify({ weightKg: wKg, weightUnit: onboardWeightUnit, calTarget: tgt.cal, proteinTarget: tgt.prot, carbTarget: tgt.carbs }));
+      var plbl = document.getElementById('profile-weight-label');
+      if (plbl) plbl.textContent = Math.round(wVal) + onboardWeightUnit;
+    }
     document.getElementById('onboard-overlay').classList.add('hidden');
     document.getElementById('onboard-step2').classList.add('hidden');
     updateLevelUI();
@@ -3069,6 +3154,7 @@
     document.getElementById('screen-' + name).classList.add('active');
     document.querySelector('.nav-item[data-screen="' + name + '"]').classList.add('active');
     window.scrollTo(0, 0);
+    if (name === 'log' && typeof renderLogHistory === 'function') renderLogHistory();
   }
 
   // currentTier managed by onboarding block
@@ -3590,6 +3676,11 @@
       totalCarbs += result.carbs;
       totalIron += result.iron;
       totalMg += result.mg;
+      // Save meal log to localStorage
+      (function() {
+        var d = new Date(); var dateKey = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+        localStorage.setItem('fauna_meals_today', JSON.stringify({ date: dateKey, meals: mealLog, totalCals: totalCals, totalProtein: totalProtein, totalCarbs: totalCarbs, totalIron: totalIron, totalMg: totalMg }));
+      })();
 
       // Update macro display
       document.getElementById('cal-val').textContent = totalCals;
@@ -4105,6 +4196,7 @@
     // Update home screen energy score with new log data
     if (typeof renderHomeScreen === 'function') renderHomeScreen();
     if (typeof renderWeekSummary === 'function') renderWeekSummary();
+    if (typeof renderLogHistory === 'function') renderLogHistory();
 
     // Toast confirmation
     var t = document.getElementById('toast');
@@ -4336,6 +4428,25 @@
       var statusEl = document.getElementById(w.source + '-status');
       if (statusEl) statusEl.innerHTML = '<span class="connected-badge">✓ Synced</span>';
     }
+    // Restore today's meals
+    (function() {
+      var d = new Date(); var todayKey = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+      var saved = JSON.parse(localStorage.getItem('fauna_meals_today') || 'null');
+      if (saved && saved.date === todayKey) {
+        mealLog = saved.meals || [];
+        totalCals = saved.totalCals || 0; totalProtein = saved.totalProtein || 0;
+        totalCarbs = saved.totalCarbs || 0; totalIron = saved.totalIron || 0; totalMg = saved.totalMg || 0;
+        var t2 = getMacroTargets();
+        var calEl = document.getElementById('cal-val'); if (calEl) calEl.textContent = totalCals;
+        var pEl = document.getElementById('prot-val'); if (pEl) pEl.textContent = totalProtein + 'g';
+        var cEl = document.getElementById('carb-val'); if (cEl) cEl.textContent = totalCarbs + 'g';
+        var calPct = Math.min(100, Math.round(totalCals / t2.cal * 100));
+        var protPct = Math.min(100, Math.round(totalProtein / t2.prot * 100));
+        var ironPct = Math.min(100, Math.round(totalIron / 100 * 100));
+        var wrap = document.querySelector('#ai-macros .progress-bar-wrap');
+        if (wrap) wrap.innerHTML = '<div class="progress-label"><span>Calories</span><span>'+calPct+'%</span></div><div class="progress-bar"><div class="progress-fill" style="width:'+calPct+'%;background:var(--amber)"></div></div><div class="progress-label"><span>Protein</span><span>'+protPct+'%</span></div><div class="progress-bar"><div class="progress-fill" style="width:'+protPct+'%;background:var(--green-deep)"></div></div><div class="progress-label"><span>Iron</span><span>'+ironPct+'%</span></div><div class="progress-bar"><div class="progress-fill" style="width:'+ironPct+'%;background:#C0392B"></div></div>';
+      }
+    })();
     if (typeof renderHomeScreen === 'function') renderHomeScreen();
   })();
 
@@ -5485,6 +5596,180 @@
       body.insertBefore(div, body.firstChild);
     }
   }
+
+  // ── FEATURE 1: DATA EXPORT / BACKUP ──
+  function exportBackup() {
+    var keys = ['fauna_logs','fauna_wearable','fauna_cycleStart','fauna_cycleLen','fauna_level','fauna_meals_today','fauna_weight','fauna_profile'];
+    var data = { version: 1, exportedAt: new Date().toISOString() };
+    keys.forEach(function(k) { var v = localStorage.getItem(k); if (v) { try { data[k] = JSON.parse(v); } catch(e) { data[k] = v; } } });
+    var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'fauna-backup-' + new Date().toISOString().slice(0,10) + '.json';
+    a.click();
+    closeDrawer();
+    var t = document.getElementById('toast'); t.textContent = '\u2713 Backup downloaded'; t.classList.add('show');
+    setTimeout(function() { t.classList.remove('show'); }, 2500);
+  }
+  function importBackup(input) {
+    var file = input.files[0]; if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      try {
+        var data = JSON.parse(e.target.result);
+        var keys = ['fauna_logs','fauna_wearable','fauna_cycleStart','fauna_cycleLen','fauna_level','fauna_meals_today','fauna_weight','fauna_profile'];
+        keys.forEach(function(k) { if (data[k] !== undefined) localStorage.setItem(k, JSON.stringify(data[k])); });
+        closeDrawer();
+        var t = document.getElementById('toast'); t.textContent = '\u2713 Backup restored \u2014 reloading...'; t.classList.add('show');
+        setTimeout(function() { location.reload(); }, 1500);
+      } catch(err) { alert('Could not read backup file. Make sure it is a valid Fauna backup.'); }
+    };
+    reader.readAsText(file);
+  }
+
+  // ── FEATURE 2: PERSONALIZED MACRO TARGETS ──
+  var macroWeightUnit = 'kg';
+  function openMacroModal() {
+    var saved = JSON.parse(localStorage.getItem('fauna_macro_profile') || '{}');
+    if (saved.weightKg) {
+      macroWeightUnit = saved.weightUnit || 'kg';
+      document.getElementById('macro-weight-unit-btn').textContent = macroWeightUnit;
+      document.getElementById('macro-weight-input').value = macroWeightUnit === 'lbs' ? Math.round(saved.weightKg / 0.453592) : Math.round(saved.weightKg);
+      updateMacroPreview();
+    }
+    document.getElementById('macro-overlay').classList.add('open');
+    document.getElementById('macro-modal').classList.add('open');
+    closeDrawer();
+  }
+  function closeMacroModal() {
+    document.getElementById('macro-overlay').classList.remove('open');
+    document.getElementById('macro-modal').classList.remove('open');
+  }
+  function toggleMacroWeightUnit() {
+    macroWeightUnit = macroWeightUnit === 'kg' ? 'lbs' : 'kg';
+    document.getElementById('macro-weight-unit-btn').textContent = macroWeightUnit;
+    var inp = document.getElementById('macro-weight-input');
+    if (inp.value) {
+      var val = parseFloat(inp.value);
+      inp.value = Math.round(macroWeightUnit === 'lbs' ? val * 2.20462 : val / 2.20462);
+    }
+    updateMacroPreview();
+  }
+  function calcTargets(weightKg, tier, phase) {
+    var protMult = tier === 'athlete' ? 1.8 : tier === 'active' ? 1.6 : 1.2;
+    var calMult  = tier === 'athlete' ? 30  : tier === 'active' ? 27  : 24;
+    var protTarget = Math.round(weightKg * protMult);
+    var calTarget  = Math.round(weightKg * calMult + protTarget * 4 + (phase === 'luteal' ? 200 : 0));
+    var carbTarget = Math.max(150, Math.round((calTarget - protTarget * 4 - weightKg * 9) / 4));
+    return { cal: calTarget, prot: protTarget, carbs: carbTarget };
+  }
+  function updateMacroPreview() {
+    var val = parseFloat(document.getElementById('macro-weight-input').value);
+    if (!val) { document.getElementById('macro-targets-preview').style.display = 'none'; return; }
+    var weightKg = macroWeightUnit === 'lbs' ? val * 0.453592 : val;
+    var t = calcTargets(weightKg, currentTier || 'active', currentPhase || 'follicular');
+    document.getElementById('preview-cals').textContent = t.cal;
+    document.getElementById('preview-prot').textContent = t.prot;
+    document.getElementById('preview-carbs').textContent = t.carbs;
+    document.getElementById('macro-targets-preview').style.display = 'block';
+  }
+  function saveMacroProfile() {
+    var val = parseFloat(document.getElementById('macro-weight-input').value);
+    if (!val) { closeMacroModal(); return; }
+    var weightKg = macroWeightUnit === 'lbs' ? val * 0.453592 : val;
+    var t = calcTargets(weightKg, currentTier || 'active', currentPhase || 'follicular');
+    localStorage.setItem('fauna_macro_profile', JSON.stringify({ weightKg: weightKg, weightUnit: macroWeightUnit, calTarget: t.cal, proteinTarget: t.prot, carbTarget: t.carbs }));
+    var lbl = document.getElementById('profile-weight-label');
+    if (lbl) lbl.textContent = Math.round(val) + macroWeightUnit;
+    closeMacroModal();
+    var t2 = document.getElementById('toast'); t2.textContent = '\u2713 Profile saved \u2014 targets updated'; t2.classList.add('show');
+    setTimeout(function() { t2.classList.remove('show'); }, 2500);
+    updateMacroGoalDisplay();
+  }
+  function getMacroTargets() {
+    var profile = JSON.parse(localStorage.getItem('fauna_macro_profile') || '{}');
+    var phase = currentPhase;
+    var calTarget  = profile.calTarget  || (phase === 'luteal' ? 2400 : 2200);
+    var protTarget = profile.proteinTarget || 140;
+    var carbTarget = profile.carbTarget || 250;
+    return { cal: calTarget, prot: protTarget, carbs: carbTarget };
+  }
+  function updateMacroGoalDisplay() {
+    var t = getMacroTargets();
+    var targets = document.querySelectorAll('.macro-target');
+    var labels = ['goal ' + t.cal.toLocaleString(), 'goal ' + t.prot + 'g', 'goal ' + t.carbs + 'g'];
+    targets.forEach(function(el, i) { if (labels[i]) el.textContent = labels[i]; });
+  }
+  // Boot: set profile weight label and update macro display
+  (function() {
+    var saved = JSON.parse(localStorage.getItem('fauna_macro_profile') || '{}');
+    if (saved.weightKg) {
+      var unit = saved.weightUnit || 'kg';
+      var lbl = document.getElementById('profile-weight-label');
+      if (lbl) lbl.textContent = Math.round(unit === 'lbs' ? saved.weightKg / 0.453592 : saved.weightKg) + unit;
+    }
+    updateMacroGoalDisplay();
+  })();
+
+  // ── FEATURE 4: CYCLE PREDICTION ──
+  function getNextPeriodDate() {
+    var start = localStorage.getItem('fauna_cycleStart');
+    var len = parseInt(localStorage.getItem('fauna_cycleLen') || '28');
+    if (!start) return null;
+    var next = new Date(parseInt(start));
+    next.setDate(next.getDate() + len);
+    var now = new Date();
+    while (next < now) next.setDate(next.getDate() + len);
+    return next;
+  }
+  function daysUntilNextPeriod() {
+    var next = getNextPeriodDate();
+    if (!next) return null;
+    return Math.round((next - new Date()) / 86400000);
+  }
+
+  // ── FEATURE 5: LOG HISTORY STRIP ──
+  function renderLogHistory() {
+    var strip = document.getElementById('log-history-strip');
+    if (!strip) return;
+    var allLogs = JSON.parse(localStorage.getItem('fauna_logs') || '[]');
+    var html = '';
+    for (var i = 6; i >= 0; i--) {
+      var d = new Date(); d.setDate(d.getDate() - i);
+      var key = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+      var entry = null;
+      for (var j=0; j<allLogs.length; j++) { if (allLogs[j].date === key) { entry = allLogs[j]; break; } }
+      var hasData = !!entry;
+      var dayName = i===0 ? 'Today' : i===1 ? 'Yest' : d.toLocaleDateString('en-US',{weekday:'short'});
+      var energyColor = hasData ? (parseInt(entry.energy)>=7 ? 'var(--green-deep)' : parseInt(entry.energy)>=5 ? 'var(--amber)' : '#C0392B') : 'transparent';
+      var dotHtml = hasData ? '<div style="width:6px;height:6px;border-radius:50%;background:'+energyColor+';margin:3px auto 0"></div>' : '<div style="height:9px"></div>';
+      var offset = -i;
+      html += '<div onclick="jumpToLogDay('+offset+')" style="flex-shrink:0;width:50px;padding:8px 4px;background:'+(hasData?'var(--cream)':'white')+';border-radius:10px;text-align:center;cursor:pointer;border:1.5px solid '+(i===0?'var(--green-deep)':'var(--cream-dark)')+';touch-action:manipulation">'
+        + '<div style="font-size:10px;font-weight:700;color:var(--text-light)">'+dayName+'</div>'
+        + '<div style="font-size:12px;color:var(--text-mid);font-weight:600">'+d.getDate()+'</div>'
+        + dotHtml
+        + '</div>';
+    }
+    strip.innerHTML = html;
+  }
+  function jumpToLogDay(offset) {
+    logOffset = offset;
+    if (typeof loadLogForDay === 'function') loadLogForDay(logOffset);
+    if (typeof updateLogHeader === 'function') updateLogHeader();
+  }
+
+  // ── FEATURE 6: ONBOARDING WEIGHT ──
+  var onboardWeightUnit = 'kg';
+  function toggleOnboardWeightUnit() {
+    onboardWeightUnit = onboardWeightUnit === 'kg' ? 'lbs' : 'kg';
+    document.getElementById('onboard-weight-unit-btn').textContent = onboardWeightUnit;
+    var inp = document.getElementById('onboard-weight-input');
+    if (inp && inp.value) {
+      var v = parseFloat(inp.value);
+      inp.value = Math.round(onboardWeightUnit === 'lbs' ? v * 2.20462 : v / 2.20462);
+    }
+  }
+
 </script>
 </body>
 </html>
