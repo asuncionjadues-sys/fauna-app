@@ -1608,6 +1608,7 @@
 <!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 </head>
 <body>
 
@@ -1644,7 +1645,10 @@
 
     <div id="gate-error" style="display:none;background:#FFF0F0;border-radius:8px;padding:10px 12px;font-size:13px;color:#C0392B;margin-bottom:14px"></div>
 
-    <button id="gate-submit-btn" onclick="gateSubmit()" style="width:100%;padding:15px;background:#2D5016;color:white;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:14px">Create account</button>
+    <button id="gate-submit-btn" onclick="gateSubmit()" style="width:100%;padding:15px;background:#2D5016;color:white;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:10px">Create account</button>
+    <div id="gate-forgot-wrap" style="display:none;text-align:right;margin-bottom:10px">
+      <button onclick="gateForgotPassword()" style="background:none;border:none;color:#2D5016;font-size:12px;cursor:pointer;font-family:inherit;text-decoration:underline;padding:0">Forgot password?</button>
+    </div>
 
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
       <div style="flex:1;height:1px;background:#D8D0C0"></div>
@@ -2701,7 +2705,7 @@
 
 <script>
   // ── FIREBASE INIT ──
-  var fbAuth;
+  var fbAuth, fbDb;
   (function() {
     var _fbConfig = {
       apiKey: "AIzaSyDsf6idh-PCtKNwh-ny5qVnVsN1URZISU0",
@@ -2714,6 +2718,7 @@
     try {
       if (!firebase.apps.length) firebase.initializeApp(_fbConfig);
       fbAuth = firebase.auth();
+      fbDb = firebase.firestore();
     } catch(e) { console.error('Firebase init failed:', e); }
   })();
 
@@ -3779,6 +3784,7 @@
       (function() {
         var d = new Date(); var dateKey = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
         localStorage.setItem('fauna_meals_today', JSON.stringify({ date: dateKey, meals: mealLog, totalCals: totalCals, totalProtein: totalProtein, totalCarbs: totalCarbs, totalIron: totalIron, totalMg: totalMg }));
+        if (typeof cloudSave === 'function') setTimeout(cloudSave, 500);
       })();
 
       // Update macro display
@@ -5828,8 +5834,22 @@
     document.getElementById('gate-tab-login').style.background = !isSU ? '#2D5016' : 'transparent';
     document.getElementById('gate-tab-login').style.color = !isSU ? 'white' : '#666';
     document.getElementById('gate-name-wrap').style.display = isSU ? 'block' : 'none';
+    document.getElementById('gate-forgot-wrap').style.display = isSU ? 'none' : 'block';
     document.getElementById('gate-submit-btn').textContent = isSU ? 'Create account' : 'Sign in';
     document.getElementById('gate-error').style.display = 'none';
+  }
+
+  function gateForgotPassword() {
+    var email = document.getElementById('gate-email').value.trim();
+    if (!email || !email.includes('@')) { gateShowError('Enter your email address first, then click Forgot password.'); return; }
+    fbAuth.sendPasswordResetEmail(email)
+      .then(function() {
+        var el = document.getElementById('gate-error');
+        el.style.background = '#F0FFF4'; el.style.color = '#2D5016';
+        el.textContent = '\u2713 Reset link sent to ' + email + ' — check your inbox.';
+        el.style.display = 'block';
+      })
+      .catch(function(err) { gateShowError(firebaseErrMsg(err.code)); });
   }
 
   function gateShowError(msg) {
@@ -5876,11 +5896,61 @@
       .catch(function(err) { gateShowError(firebaseErrMsg(err.code)); });
   }
 
+  // ── FIRESTORE SYNC ──
+  var SYNC_KEYS = ['fauna_logs','fauna_wearable','fauna_cycleStart','fauna_cycleLen','fauna_level','fauna_meals_today','fauna_macro_profile','fauna_profile'];
+
+  function cloudSave() {
+    if (!fbDb || !authUser || !authUser.uid) return;
+    var data = { updatedAt: new Date().toISOString() };
+    SYNC_KEYS.forEach(function(k) {
+      var v = localStorage.getItem(k);
+      if (v) { try { data[k] = JSON.parse(v); } catch(e) { data[k] = v; } }
+    });
+    fbDb.collection('users').doc(authUser.uid).set(data, { merge: true })
+      .catch(function(e) { console.warn('Cloud save failed:', e); });
+  }
+
+  function cloudLoad(uid) {
+    if (!fbDb) return;
+    fbDb.collection('users').doc(uid).get().then(function(doc) {
+      if (!doc.exists) return;
+      var data = doc.data();
+      SYNC_KEYS.forEach(function(k) {
+        if (data[k] !== undefined) {
+          try { localStorage.setItem(k, JSON.stringify(data[k])); }
+          catch(e) { localStorage.setItem(k, data[k]); }
+        }
+      });
+      // Reload cycle + home state with restored data
+      refreshCycleState();
+      renderHomeScreen();
+      updateCycleScreen();
+      updateMacroGoalDisplay();
+    }).catch(function(e) { console.warn('Cloud load failed:', e); });
+  }
+
+  // Auto-save on any log save
+  var _origSaveCurrentLog = null;
+  function hookCloudSave() {
+    // Patch saveCurrentLog to also cloud-save
+    var _orig = window.saveCurrentLog;
+    if (_orig && !_orig._hooked) {
+      window.saveCurrentLog = function() {
+        _orig.apply(this, arguments);
+        setTimeout(cloudSave, 500);
+      };
+      window.saveCurrentLog._hooked = true;
+    }
+  }
+
   function onAuthSuccess(user) {
     authUser = { email: user.email, name: user.displayName || user.email.split('@')[0], uid: user.uid };
     localStorage.setItem('fauna_user', JSON.stringify(authUser));
     document.getElementById('auth-gate').style.display = 'none';
     updateAuthDrawer();
+    // Load cloud data for this user
+    cloudLoad(user.uid);
+    hookCloudSave();
     var t = document.getElementById('toast');
     t.textContent = '\u2713 Welcome, ' + authUser.name + '!';
     t.classList.add('show');
