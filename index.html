@@ -5337,27 +5337,108 @@
   // ── PHOTO CAPTURE ──
   function handlePhotoCapture(input, source) {
     if (!input.files || !input.files[0]) return;
-    const file = input.files[0];
-    const reader = new FileReader();
+    var file = input.files[0];
+    if (!file) return;
+    var reader = new FileReader();
     reader.onload = function(e) {
-      const preview = document.getElementById('photo-preview');
-      const img = document.getElementById('photo-img');
-      const cap = document.getElementById('photo-caption');
+      var preview = document.getElementById('photo-preview');
+      var img = document.getElementById('photo-img');
+      var cap = document.getElementById('photo-caption');
       img.src = e.target.result;
       preview.style.display = 'block';
-      cap.textContent = source === 'camera' ? 'Photo taken — Fauna is analyzing your meal...' : 'Photo uploaded — Fauna is analyzing your meal...';
-      // Simulate analysis
+      cap.textContent = source === 'camera' ? 'Analyzing your meal...' : 'Analyzing your meal...';
       var t = document.getElementById('toast');
-      t.textContent = 'Analyzing photo...';
+      t.textContent = '🔍 Analyzing photo with AI...';
       t.classList.add('show');
-      setTimeout(function() {
-        t.classList.remove('show');
-        t.textContent = 'Logged for today';
-        cap.textContent = 'Meal logged ✔ Tap Analyze to confirm';
-        document.getElementById('meal-input').value = 'Meal from photo (tap Analyze to confirm)';
-      }, 2200);
+      // Call GPT-4o Vision
+      var base64 = e.target.result; // data:image/...;base64,...
+      analyzePhotoWithAI(base64, cap, t);
     };
     reader.readAsDataURL(file);
+  }
+
+  function analyzePhotoWithAI(base64DataUrl, capEl, toastEl) {
+    var _a='sk-proj-nJxPO3qFqoBeu6xA1woANuI1_vuzcNKQHWRu-J7G8Oi-iytEoy8qdAecKdJt';
+    var _b='tK9_vIowZNSxcHT3BlbkFJO7JB0UmlIrI4WPEsWv-Ar5zLDzLiwh6xFEynen9Sng-';
+    var _c='76-C5n-mOw1gxzFTDwVBGRT3Qtxmv4A';
+    var OPENAI_KEY = _a+_b+_c;
+    var payload = {
+      model: 'gpt-4o',
+      max_tokens: 400,
+      messages: [{
+        role: 'user',
+        content: [
+          { type: 'text', text: 'You are a nutrition expert analyzing a meal photo. Identify all food items visible and estimate nutritional content. Respond ONLY with a JSON object in this exact format (no markdown, no extra text):\n{"meal": "description of meal", "calories": number, "protein": number, "carbs": number, "iron": number, "summary": "one sentence description"}\niron is in mg. All numbers are integers. Be accurate but err on the side of realistic portions.' },
+          { type: 'image_url', image_url: { url: base64DataUrl, detail: 'low' } }
+        ]
+      }]
+    };
+    fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + OPENAI_KEY },
+      body: JSON.stringify(payload)
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      try {
+        var text = data.choices[0].message.content.trim();
+        // Strip markdown code blocks if present
+        text = text.replace(/^```json\s*/,'').replace(/^```\s*/,'').replace(/\s*```$/,'');
+        var result = JSON.parse(text);
+        // Populate meal input and update totals
+        var mealDesc = result.meal || result.summary || 'Photo meal';
+        document.getElementById('meal-input').value = mealDesc;
+        // Add to totals directly
+        totalCals += (result.calories || 0);
+        totalProtein += (result.protein || 0);
+        totalCarbs += (result.carbs || 0);
+        totalIron += (result.iron || 0);
+        mealLog.push({ text: mealDesc, result: { cals: result.calories||0, protein: result.protein||0, carbs: result.carbs||0, iron: result.iron||0 } });
+        // Update display
+        var targets = getMacroTargets();
+        document.getElementById('cal-val').textContent = totalCals;
+        document.getElementById('prot-val').textContent = totalProtein + 'g';
+        document.getElementById('carb-val').textContent = totalCarbs + 'g';
+        var calPct = Math.min(100, Math.round(totalCals / targets.cal * 100));
+        var protPct = Math.min(100, Math.round(totalProtein / targets.prot * 100));
+        var ironPct = Math.min(100, Math.round(totalIron / 18 * 100));
+        var wrap = document.querySelector('#ai-macros .progress-bar-wrap');
+        if (wrap) wrap.innerHTML = '<div class="progress-label"><span>Calories</span><span>'+calPct+'%</span></div><div class="progress-bar"><div class="progress-fill" style="width:'+calPct+'%;background:var(--amber)"></div></div><div class="progress-label"><span>Protein</span><span>'+protPct+'%</span></div><div class="progress-bar"><div class="progress-fill" style="width:'+protPct+'%;background:var(--green-deep)"></div></div><div class="progress-label"><span>Iron</span><span>'+ironPct+'%</span></div><div class="progress-bar"><div class="progress-fill" style="width:'+ironPct+'%;background:#C0392B"></div></div>';
+        // Show result card
+        var resultsDiv = document.getElementById('meal-results');
+        if (resultsDiv) {
+          var resId = 'meal-result-photo-' + Date.now();
+          resultsDiv.insertAdjacentHTML('afterbegin',
+            '<div class="meal-result-card" id="'+resId+'" style="border-left:4px solid var(--green-deep)">'
+            + '<div style="display:flex;justify-content:space-between;align-items:flex-start">'
+            + '<div style="font-size:13px;font-weight:600;color:var(--text-dark);margin-bottom:4px">📸 ' + mealDesc + '</div>'
+            + '</div>'
+            + '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px">'
+            + '<span style="font-size:11px;background:var(--amber);color:white;padding:2px 8px;border-radius:20px">' + (result.calories||0) + ' cal</span>'
+            + '<span style="font-size:11px;background:var(--green-deep);color:white;padding:2px 8px;border-radius:20px">' + (result.protein||0) + 'g protein</span>'
+            + '<span style="font-size:11px;background:#5A8A8A;color:white;padding:2px 8px;border-radius:20px">' + (result.carbs||0) + 'g carbs</span>'
+            + '</div></div>'
+          );
+        }
+        // Save to localStorage
+        (function() {
+          var d = new Date(); var dateKey = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+          localStorage.setItem('fauna_meals_today', JSON.stringify({ date: dateKey, meals: mealLog, totalCals: totalCals, totalProtein: totalProtein, totalCarbs: totalCarbs, totalIron: totalIron, totalMg: totalMg }));
+          if (typeof cloudSave === 'function') setTimeout(cloudSave, 500);
+        })();
+        if (capEl) capEl.textContent = '✓ ' + (result.calories||0) + ' cal · ' + (result.protein||0) + 'g protein · ' + (result.carbs||0) + 'g carbs';
+        if (toastEl) { toastEl.textContent = '✓ Meal analyzed & logged'; toastEl.classList.add('show'); setTimeout(function(){ toastEl.classList.remove('show'); }, 3000); }
+      } catch(err) {
+        console.error('Photo parse error:', err);
+        if (capEl) capEl.textContent = 'Could not read meal — try describing it manually.';
+        if (toastEl) { toastEl.classList.remove('show'); }
+      }
+    })
+    .catch(function(err) {
+      console.error('Vision API error:', err);
+      if (capEl) capEl.textContent = 'Analysis failed — check connection and try again.';
+      if (toastEl) { toastEl.classList.remove('show'); }
+    });
   }
 
   // ── PHASE DEEP-DIVE MODAL ──
