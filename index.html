@@ -2706,6 +2706,7 @@
 <script>
   // ── FIREBASE INIT ──
   var fbAuth, fbDb;
+  var SYNC_KEYS = ['fauna_logs','fauna_wearable','fauna_cycleStart','fauna_cycleLen','fauna_level','fauna_meals_today','fauna_macro_profile','fauna_profile'];
   (function() {
     var _fbConfig = {
       apiKey: "AIzaSyDsf6idh-PCtKNwh-ny5qVnVsN1URZISU0",
@@ -4182,7 +4183,7 @@
     var title = document.getElementById('log-title');
     var label = document.getElementById('log-date-label');
     var nextBtn = document.getElementById('log-next-btn');
-    var t = i18n[currentLang] || i18n.en;
+    var t = (typeof i18n !== 'undefined' && typeof currentLang !== 'undefined') ? (i18n[currentLang] || i18n.en) : { log_title: 'Daily Log' };
     if (title) title.textContent = logOffset === 0 ? (t.log_title || 'Daily Log') : getDateLabel(logOffset);
     if (label) {
       var d = new Date(); d.setDate(d.getDate() + logOffset);
@@ -5898,8 +5899,6 @@
   }
 
   // ── FIRESTORE SYNC ──
-  var SYNC_KEYS = ['fauna_logs','fauna_wearable','fauna_cycleStart','fauna_cycleLen','fauna_level','fauna_meals_today','fauna_macro_profile','fauna_profile'];
-
   function cloudSave() {
     // Also try reading uid from firebase auth directly as fallback
     var uid = (authUser && authUser.uid) ? authUser.uid : (fbAuth && fbAuth.currentUser ? fbAuth.currentUser.uid : null);
