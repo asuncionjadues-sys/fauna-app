@@ -5925,10 +5925,10 @@
         }
       });
       // Reload cycle + home state with restored data
-      refreshCycleState();
-      renderHomeScreen();
-      updateCycleScreen();
-      updateMacroGoalDisplay();
+      if (typeof refreshCycleState === 'function') refreshCycleState();
+      if (typeof renderHomeScreen === 'function') renderHomeScreen();
+      if (typeof updateCycleScreen === 'function') updateCycleScreen();
+      if (typeof updateMacroGoalDisplay === 'function') updateMacroGoalDisplay();
     }).catch(function(e) { console.warn('Cloud load failed:', e); });
   }
 
