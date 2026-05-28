@@ -5673,9 +5673,12 @@
         var data = JSON.parse(e.target.result);
         var keys = ['fauna_logs','fauna_wearable','fauna_cycleStart','fauna_cycleLen','fauna_level','fauna_meals_today','fauna_weight','fauna_profile'];
         keys.forEach(function(k) { if (data[k] !== undefined) localStorage.setItem(k, JSON.stringify(data[k])); });
-        closeDrawer();
-        var t = document.getElementById('toast'); t.textContent = '\u2713 Backup restored \u2014 reloading...'; t.classList.add('show');
-        setTimeout(function() { location.reload(); }, 1500);
+        // Also push to cloud if logged in
+        if (typeof cloudSave === 'function') setTimeout(cloudSave, 200);
+        if (typeof closeDrawer === 'function') closeDrawer();
+        var t = document.getElementById('toast');
+        if (t) { t.textContent = '\u2713 Backup restored \u2014 reloading...'; t.classList.add('show'); }
+        setTimeout(function() { location.reload(); }, 1800);
       } catch(err) { alert('Could not read backup file. Make sure it is a valid Fauna backup.'); }
     };
     reader.readAsText(file);
