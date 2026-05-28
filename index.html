@@ -3664,6 +3664,7 @@
   // ── MEAL ANALYSIS ENGINE ──
   // Keyword-based nutrition estimator (frontend-only, no backend needed)
   var mealLog = [];  // stores logged meals for today
+  var _photoJustLogged = false; // flag: photo AI result already added to totals
   var totalCals = 0, totalProtein = 0, totalCarbs = 0, totalIron = 0, totalMg = 0;
 
   var foodDB = [
@@ -3757,6 +3758,7 @@
   }
 
   function analyzeMeal() {
+    if (_photoJustLogged) { _photoJustLogged = false; return; }
     var input = document.getElementById('meal-input').value.trim();
     if (!input) {
       var inp = document.getElementById('meal-input');
@@ -5426,6 +5428,8 @@
           localStorage.setItem('fauna_meals_today', JSON.stringify({ date: dateKey, meals: mealLog, totalCals: totalCals, totalProtein: totalProtein, totalCarbs: totalCarbs, totalIron: totalIron, totalMg: totalMg }));
           if (typeof cloudSave === 'function') setTimeout(cloudSave, 500);
         })();
+        _photoJustLogged = true;
+        document.getElementById('meal-input').value = '';
         if (capEl) capEl.textContent = '✓ ' + (result.calories||0) + ' cal · ' + (result.protein||0) + 'g protein · ' + (result.carbs||0) + 'g carbs';
         if (toastEl) { toastEl.textContent = '✓ Meal analyzed & logged'; toastEl.classList.add('show'); setTimeout(function(){ toastEl.classList.remove('show'); }, 3000); }
       } catch(err) {
