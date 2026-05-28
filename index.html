@@ -5901,14 +5901,17 @@
   var SYNC_KEYS = ['fauna_logs','fauna_wearable','fauna_cycleStart','fauna_cycleLen','fauna_level','fauna_meals_today','fauna_macro_profile','fauna_profile'];
 
   function cloudSave() {
-    if (!fbDb || !authUser || !authUser.uid) return;
+    // Also try reading uid from firebase auth directly as fallback
+    var uid = (authUser && authUser.uid) ? authUser.uid : (fbAuth && fbAuth.currentUser ? fbAuth.currentUser.uid : null);
+    if (!fbDb || !uid) { console.warn('cloudSave: no fbDb or uid', !!fbDb, uid); return; }
     var data = { updatedAt: new Date().toISOString() };
     SYNC_KEYS.forEach(function(k) {
       var v = localStorage.getItem(k);
       if (v) { try { data[k] = JSON.parse(v); } catch(e) { data[k] = v; } }
     });
-    fbDb.collection('users').doc(authUser.uid).set(data, { merge: true })
-      .catch(function(e) { console.warn('Cloud save failed:', e); });
+    fbDb.collection('users').doc(uid).set(data, { merge: true })
+      .then(function() { console.log('Cloud save OK'); })
+      .catch(function(e) { console.error('Cloud save failed:', e.code, e.message); });
   }
 
   function cloudLoad(uid) {
